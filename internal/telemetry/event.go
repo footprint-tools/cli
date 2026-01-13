@@ -2,11 +2,13 @@ package telemetry
 
 import "time"
 
-type CommitEvent struct {
-	RepoID    string
-	RepoPath  string
-	Commit    string
-	Branch    string
-	Timestamp time.Time
-	Status    Status
+type RepoEvent struct {
+	RepoID        string
+	RepoPath      string
+	Commit        string
+	CommitMessage string
+	Branch        string
+	Timestamp     time.Time
+	Status        Status
+	Source        Source
 }

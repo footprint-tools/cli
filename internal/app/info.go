@@ -1,6 +1,6 @@
 package app
 
 var (
-	Name    = "footprint"
+	Name    = "Footprint"
 	Version = "dev"
 )

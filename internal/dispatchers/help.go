@@ -101,9 +101,14 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 		if len(node.Flags) > 0 {
 			out.WriteString("FLAGS\n")
 			for _, f := range node.Flags {
+				name := strings.Join(f.Names, ", ")
+				if f.ValueHint != "" {
+					name = name + " " + f.ValueHint
+				}
+
 				out.WriteString(fmt.Sprintf(
-					"   %-12s %s\n",
-					strings.Join(f.Names, ", "),
+					"   %-20s %s\n",
+					name,
 					f.Description,
 				))
 			}

@@ -37,6 +37,16 @@ func HeadCommit() (string, error) {
 	return runGit("rev-parse", "HEAD")
 }
 
+func CommitMessage() (string, error) {
+	out, err := exec.Command(
+		"git", "show", "-s", "--format=%s",
+	).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func CurrentBranch() (string, error) {
 	return runGit("rev-parse", "--abbrev-ref", "HEAD")
 }

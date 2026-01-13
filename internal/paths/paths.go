@@ -3,6 +3,8 @@ package paths
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/Skryensya/footprint/internal/app"
 )
 
 func AppDataDir() string {
@@ -11,7 +13,7 @@ func AppDataDir() string {
 		return "."
 	}
 
-	path := filepath.Join(dir, "footprint")
+	path := filepath.Join(dir, app.Name)
 
 	_ = os.MkdirAll(path, 0755)
 

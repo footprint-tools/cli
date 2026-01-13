@@ -18,6 +18,7 @@ const (
 
 type FlagDescriptor struct {
 	Names       []string
+	ValueHint   string
 	Description string
 	Scope       FlagScope
 }

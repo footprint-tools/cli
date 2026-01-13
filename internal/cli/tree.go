@@ -6,209 +6,204 @@ import (
 )
 
 func BuildTree() *dispatchers.DispatchNode {
-	root := dispatchers.NewNode(
-		"fp",
-		nil,
-		"Track your work across repositories",
-		"fp <command> [flags]",
-		[]dispatchers.FlagDescriptor{
-			{
-				Names:       []string{"--help", "-h"},
-				Description: "Show help",
-				Scope:       dispatchers.FlagScopeGlobal,
-			},
-			{
-				Names:       []string{"--version", "-v"},
-				Description: "Show version",
-				Scope:       dispatchers.FlagScopeGlobal,
-			},
-		},
-		nil,
-		nil,
-	)
+	root := dispatchers.Root(dispatchers.RootSpec{
+		Name:    "fp",
+		Summary: "Track your work across repositories",
+		Usage:   "fp <command> [flags]",
+		Flags:   RootFlags,
+	})
 
-	dispatchers.NewNode(
-		"version",
-		root,
-		"Show current fp version",
-		"fp version",
-		nil,
-		nil,
-		actions.ShowVersion,
-	).Category = dispatchers.CategoryInfo
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "version",
+		Parent:   root,
+		Summary:  "Show current fp version",
+		Usage:    "fp version",
+		Action:   actions.ShowVersion,
+		Category: dispatchers.CategoryInfo,
+	})
 
-	dispatchers.NewNode(
-		"hello-world",
-		root,
-		"Run a basic sanity check",
-		"fp hello-world",
-		nil,
-		nil,
-		actions.HelloWorld,
-	).Category = dispatchers.CategoryInfo
+	// -- config
 
-	config := dispatchers.NewNode(
-		"config",
-		root,
-		"Manage configuration",
-		"fp config <command>",
-		nil,
-		nil,
-		nil,
-	)
+	config := dispatchers.Group(dispatchers.GroupSpec{
+		Name:    "config",
+		Parent:  root,
+		Summary: "Manage configuration",
+		Usage:   "fp config <command>",
+	})
 
-	dispatchers.NewNode(
-		"get",
-		config,
-		"Get a config value",
-		"fp config get <key>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "key",
-				Description: "Configuration key to read",
-				Required:    true,
-			},
-		},
-		actions.ConfigGet,
-	).Category = dispatchers.CategoryConfig
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "get",
+		Parent:   config,
+		Summary:  "Get a config value",
+		Usage:    "fp config get <key>",
+		Args:     ConfigKeyArg,
+		Action:   actions.ConfigGet,
+		Category: dispatchers.CategoryConfig,
+	})
 
-	dispatchers.NewNode(
-		"set",
-		config,
-		"Set a config value",
-		"fp config set <key> <value>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "key",
-				Description: "Configuration key to write",
-				Required:    true,
-			},
-			{
-				Name:        "value",
-				Description: "Value to assign",
-				Required:    true,
-			},
-		},
-		actions.ConfigSet,
-	).Category = dispatchers.CategoryConfig
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "set",
+		Parent:   config,
+		Summary:  "Set a config value",
+		Usage:    "fp config set <key> <value>",
+		Args:     ConfigKeyValueArgs,
+		Action:   actions.ConfigSet,
+		Category: dispatchers.CategoryConfig,
+	})
 
-	dispatchers.NewNode(
-		"unset",
-		config,
-		"Remove a config value",
-		"fp config unset <key> <value>",
-		[]dispatchers.FlagDescriptor{
-			{
-				Names:       []string{"--all"},
-				Description: "Delete all the config key=value pairs",
-				Scope:       dispatchers.FlagScopeLocal,
-			},
-		},
-		[]dispatchers.ArgSpec{
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:    "unset",
+		Parent:  config,
+		Summary: "Remove a config value",
+		Usage:   "fp config unset <key>",
+		Flags:   ConfigUnsetFlags,
+		Args: []dispatchers.ArgSpec{
 			{
 				Name:        "key",
 				Description: "Configuration key to delete",
 				Required:    false,
 			},
 		},
-		actions.ConfigUnset,
-	).Category = dispatchers.CategoryConfig
+		Action:   actions.ConfigUnset,
+		Category: dispatchers.CategoryConfig,
+	})
 
-	dispatchers.NewNode(
-		"list",
-		config,
-		"List all the configuration as key=value pairs",
-		"fp config list",
-		nil,
-		nil,
-		actions.ConfigList,
-	).Category = dispatchers.CategoryConfig
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "list",
+		Parent:   config,
+		Summary:  "List all the configuration as key=value pairs",
+		Usage:    "fp config list",
+		Action:   actions.ConfigList,
+		Category: dispatchers.CategoryConfig,
+	})
 
-	repo := dispatchers.NewNode(
-		"repo",
-		root,
-		"Manage repository tracking",
-		"fp repo <command>",
-		nil,
-		nil,
-		nil,
-	)
+	// -- repo
 
-	dispatchers.NewNode(
-		"track",
-		repo,
-		"Start tracking a repository",
-		"fp repo track <path>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "path",
-				Description: "Path to a git repository (defaults to current directory)",
-				Required:    false,
-			},
-		},
-		actions.RepoTrack,
-	).Category = dispatchers.CategoryRepo
+	repo := dispatchers.Group(dispatchers.GroupSpec{
+		Name:    "repo",
+		Parent:  root,
+		Summary: "Manage repository tracking",
+		Usage:   "fp repo <command>",
+	})
 
-	dispatchers.NewNode(
-		"untrack",
-		repo,
-		"Stop tracking a repository",
-		"fp repo untrack <path>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "path",
-				Description: "Path to a git repository (defaults to current directory)",
-				Required:    false,
-			},
-		},
-		actions.RepoUntrack,
-	).Category = dispatchers.CategoryRepo
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "track",
+		Parent:   repo,
+		Summary:  "Start tracking a repository",
+		Usage:    "fp repo track <path>",
+		Args:     OptionalRepoPathArg,
+		Action:   actions.RepoTrack,
+		Category: dispatchers.CategoryRepo,
+	})
 
-	dispatchers.NewNode(
-		"list",
-		repo,
-		"Show all the repositories being tracked",
-		"fp repo list",
-		nil,
-		nil,
-		actions.RepoList,
-	).Category = dispatchers.CategoryRepo
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "untrack",
+		Parent:   repo,
+		Summary:  "Stop tracking a repository",
+		Usage:    "fp repo untrack <path>",
+		Args:     OptionalRepoPathArg,
+		Action:   actions.RepoUntrack,
+		Category: dispatchers.CategoryRepo,
+	})
 
-	dispatchers.NewNode(
-		"status",
-		repo,
-		"Show repository tracking status",
-		"fp repo status <path>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "path",
-				Description: "Path to a git repository (defaults to current directory)",
-				Required:    false,
-			},
-		},
-		actions.RepoStatus,
-	).Category = dispatchers.CategoryRepo
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "list",
+		Parent:   repo,
+		Summary:  "Show all the repositories being tracked",
+		Usage:    "fp repo list",
+		Action:   actions.RepoList,
+		Category: dispatchers.CategoryRepo,
+	})
 
-	dispatchers.NewNode(
-		"adopt-remote",
-		repo,
-		"Update repository id to reflect new remote",
-		"fp repo adopt-remote <path>",
-		nil,
-		[]dispatchers.ArgSpec{
-			{
-				Name:        "path",
-				Description: "Path to a git repository (defaults to current directory)",
-				Required:    false,
-			},
-		},
-		actions.RepoAdoptRemote,
-	).Category = dispatchers.CategoryRepo
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "status",
+		Parent:   repo,
+		Summary:  "Show repository tracking status",
+		Usage:    "fp repo status <path>",
+		Args:     OptionalRepoPathArg,
+		Action:   actions.RepoStatus,
+		Category: dispatchers.CategoryRepo,
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "adopt-remote",
+		Parent:   repo,
+		Summary:  "Update repository id to reflect new remote",
+		Usage:    "fp repo adopt-remote <path>",
+		Args:     OptionalRepoPathArg,
+		Action:   actions.RepoAdoptRemote,
+		Category: dispatchers.CategoryRepo,
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "record",
+		Parent:   repo,
+		Summary:  "Record last commit footprint",
+		Usage:    "fp repo record",
+		Flags:    RepoRecordFlags,
+		Action:   actions.RepoRecord,
+		Category: dispatchers.CategoryRepo,
+	})
+
+	// -- activity
+
+	activity := dispatchers.Group(dispatchers.GroupSpec{
+		Name:    "activity",
+		Parent:  root,
+		Summary: "Show recorded repository activity",
+		Usage:   "fp activity <command>",
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "list",
+		Parent:   activity,
+		Summary:  "List recorded activity (newest first)",
+		Usage:    "fp activity list",
+		Action:   actions.ActivityList,
+		Flags:    ActivityListFlags,
+		Category: dispatchers.CategoryInfo,
+	})
+
+	// -- hooks
+
+	hooks := dispatchers.Group(dispatchers.GroupSpec{
+		Name:    "hooks",
+		Parent:  root,
+		Summary: "Manage git hook installation",
+		Usage:   "fp hooks <command>",
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "install",
+		Parent:   hooks,
+		Summary:  "Install fp git hooks",
+		Usage:    "fp hooks install (--repo | --global)",
+		Flags:    HooksInstallFlags,
+		Action:   actions.HooksInstall,
+		Category: dispatchers.CategoryInfo,
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "status",
+		Parent:   hooks,
+		Summary:  "Show installed fp hooks",
+		Usage:    "fp hooks status [--global]",
+		Flags:    HooksStatusFlags,
+		Action:   actions.HooksStatus,
+		Category: dispatchers.CategoryInfo,
+	})
+
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:     "uninstall",
+		Parent:   hooks,
+		Summary:  "Remove fp git hooks",
+		Usage:    "fp hooks uninstall (--repo | --global)",
+		Flags:    HooksUninstallFlags,
+		Action:   actions.HooksUninstall,
+		Category: dispatchers.CategoryInfo,
+	})
+
+	// -- help
 
 	dispatchers.NewNode(
 		"help",
