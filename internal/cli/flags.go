@@ -24,7 +24,7 @@ var (
 		},
 	}
 
-	ActivityListFlags = []dispatchers.FlagDescriptor{
+	ActivityFlags = []dispatchers.FlagDescriptor{
 		{
 			Names:       []string{"--oneline"},
 			Description: "Show one event per line",
@@ -42,20 +42,49 @@ var (
 			Description: "Filter by source (post-commit, post-rewrite, post-checkout, post-merge, pre-push, manual)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--since"},
+			ValueHint:   "<date>",
+			Description: "Show events after date (YYYY-MM-DD)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--until"},
+			ValueHint:   "<date>",
+			Description: "Show events before date (YYYY-MM-DD)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--repo"},
+			ValueHint:   "<id>",
+			Description: "Filter by repository id",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--limit"},
+			ValueHint:   "<n>",
+			Description: "Limit number of results",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
-	RepoRecordFlags = []dispatchers.FlagDescriptor{
+	RecordFlags = []dispatchers.FlagDescriptor{
 		{
 			Names:       []string{"--verbose"},
 			Description: "Print details about the recorded commit",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--manual"},
+			Description: "Acknowledge manual execution (suppresses note)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
-	HooksInstallFlags = []dispatchers.FlagDescriptor{
+	SetupFlags = []dispatchers.FlagDescriptor{
 		{
 			Names:       []string{"--repo"},
-			Description: "Install hooks in the current repository",
+			Description: "Install hooks in the current repository (default)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
@@ -70,29 +99,34 @@ var (
 		},
 	}
 
-	HooksStatusFlags = []dispatchers.FlagDescriptor{
-		{
-			Names:       []string{"--global"},
-			Description: "Check global hooks installation",
-			Scope:       dispatchers.FlagScopeGlobal,
-		},
-	}
-
-	HooksUninstallFlags = []dispatchers.FlagDescriptor{
+	TeardownFlags = []dispatchers.FlagDescriptor{
 		{
 			Names:       []string{"--repo"},
-			Description: "Uninstall hooks from the current repository",
+			Description: "Remove hooks from the current repository (default)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
 			Names:       []string{"--global"},
-			Description: "Uninstall global hooks",
+			Description: "Remove global hooks",
 			Scope:       dispatchers.FlagScopeGlobal,
 		},
 		{
 			Names:       []string{"--force"},
 			Description: "Skip confirmation prompt",
 			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
+	CheckFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"--repo"},
+			Description: "Check hooks in the current repository (default)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--global"},
+			Description: "Check global hooks installation",
+			Scope:       dispatchers.FlagScopeGlobal,
 		},
 	}
 )
