@@ -33,6 +33,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Exit with non-zero code if resolution requests it (e.g., fp with no args)
+	if res.ExitCode != 0 {
+		os.Exit(res.ExitCode)
+	}
 }
 
 func extractFlags(args []string) []string {
