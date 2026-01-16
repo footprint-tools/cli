@@ -4,6 +4,7 @@ func NewNode(
 	name string,
 	parent *DispatchNode,
 	summary string,
+	description string,
 	usage string,
 	flags []FlagDescriptor,
 	args []ArgSpec,
@@ -11,13 +12,14 @@ func NewNode(
 ) *DispatchNode {
 
 	node := &DispatchNode{
-		Name:     name,
-		Summary:  summary,
-		Usage:    usage,
-		Flags:    flags,
-		Args:     args,
-		Action:   action,
-		Children: make(map[string]*DispatchNode),
+		Name:        name,
+		Summary:     summary,
+		Description: description,
+		Usage:       usage,
+		Flags:       flags,
+		Args:        args,
+		Action:      action,
+		Children:    make(map[string]*DispatchNode),
 	}
 
 	if parent == nil {
@@ -35,6 +37,7 @@ func Root(spec RootSpec) *DispatchNode {
 		spec.Name,
 		nil,
 		spec.Summary,
+		spec.Description,
 		spec.Usage,
 		spec.Flags,
 		nil,
@@ -47,6 +50,7 @@ func Group(spec GroupSpec) *DispatchNode {
 		spec.Name,
 		spec.Parent,
 		spec.Summary,
+		spec.Description,
 		spec.Usage,
 		nil,
 		nil,
@@ -59,6 +63,7 @@ func Command(spec CommandSpec) *DispatchNode {
 		spec.Name,
 		spec.Parent,
 		spec.Summary,
+		spec.Description,
 		spec.Usage,
 		spec.Flags,
 		spec.Args,
