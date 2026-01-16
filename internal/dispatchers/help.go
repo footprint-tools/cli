@@ -6,8 +6,33 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Skryensya/footprint/internal/help"
 	"github.com/Skryensya/footprint/internal/ui"
 )
+
+// commandDisplayOrder defines explicit ordering within categories.
+// Commands not listed appear alphabetically after listed ones.
+var commandDisplayOrder = map[string]int{
+	// get started: setup first (install hooks), then track
+	"setup": 1,
+	"track": 2,
+	// inspect activity and state
+	"activity": 1,
+	"status":   2,
+	"repos":    3,
+	"list":     4,
+	"check":    5,
+	"version":  6,
+	// manage tracked repositories
+	"untrack":     1,
+	"sync-remote": 2,
+	"teardown":    3,
+	// config commands
+	"config get":   1,
+	"config set":   2,
+	"config unset": 3,
+	"config list":  4,
+}
 
 func collectLeafCommands(node *DispatchNode, out *[]*DispatchNode) {
 	if node.Action != nil {
@@ -20,22 +45,21 @@ func collectLeafCommands(node *DispatchNode, out *[]*DispatchNode) {
 	}
 }
 
+// HelpAction generates help output for a command node.
 func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 	return func(args []string, flags []string) error {
 		var out bytes.Buffer
 
-		out.WriteString(strings.Join(node.Path, " "))
-		if node.Summary != "" {
-			out.WriteString(" - ")
-			out.WriteString(node.Summary)
-		}
-		out.WriteString("\n\n")
-
-		out.WriteString("usage: ")
-		out.WriteString(node.Usage)
-		out.WriteString("\n\n")
-
 		if node == root {
+			// Root help: git-like format with "fp - " prefix
+			out.WriteString("fp - ")
+			out.WriteString(node.Summary)
+			out.WriteString("\n\n")
+
+			out.WriteString("usage: ")
+			out.WriteString(node.Usage)
+			out.WriteString("\n\n")
+
 			out.WriteString("These are common fp commands used in various situations:\n\n")
 
 			grouped := make(map[CommandCategory][]*DispatchNode)
@@ -58,66 +82,119 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 				out.WriteString(cat.String())
 				out.WriteString("\n")
 
+				// Sort by explicit order, then alphabetically
 				sort.Slice(cmds, func(i, j int) bool {
-					return strings.Join(cmds[i].Path[1:], " ") <
-						strings.Join(cmds[j].Path[1:], " ")
+					nameI := strings.Join(cmds[i].Path[1:], " ")
+					nameJ := strings.Join(cmds[j].Path[1:], " ")
+					orderI, hasI := commandDisplayOrder[nameI]
+					orderJ, hasJ := commandDisplayOrder[nameJ]
+					if hasI && hasJ {
+						return orderI < orderJ
+					}
+					if hasI {
+						return true
+					}
+					if hasJ {
+						return false
+					}
+					return nameI < nameJ
 				})
 
 				for _, cmd := range cmds {
 					displayName := strings.Join(cmd.Path[1:], " ")
-
-					out.WriteString(fmt.Sprintf(
-						"   %-18s %s\n",
-						displayName,
-						cmd.Summary,
-					))
+					fmt.Fprintf(&out, "   %-18s %s\n", displayName, cmd.Summary)
 				}
 				out.WriteString("\n")
 			}
-		}
 
-		if node != root && len(node.Children) > 0 {
-			out.WriteString("COMMANDS\n")
-
-			children := make([]*DispatchNode, 0, len(node.Children))
-			for _, child := range node.Children {
-				children = append(children, child)
-			}
-
-			sort.Slice(children, func(i, j int) bool {
-				return children[i].Name < children[j].Name
-			})
-
-			for _, child := range children {
-				out.WriteString(fmt.Sprintf(
-					"   %-12s %s\n",
-					child.Name,
-					child.Summary,
-				))
+			// Conceptual guides section - uses help package for topics
+			out.WriteString("conceptual guides\n")
+			for _, topic := range help.AllTopics() {
+				fmt.Fprintf(&out, "   %-18s %s\n", topic.Name, topic.Summary)
 			}
 			out.WriteString("\n")
-		}
 
-		if len(node.Flags) > 0 {
-			out.WriteString("FLAGS\n")
-			for _, f := range node.Flags {
-				name := strings.Join(f.Names, ", ")
-				if f.ValueHint != "" {
-					name = name + " " + f.ValueHint
+			// Footer
+			out.WriteString("See 'fp help <command>' for detailed help on a specific command.\n")
+			out.WriteString("See 'fp help <topic>' for conceptual documentation.\n")
+			out.WriteString("See 'fp help topics' for a list of available topics.\n")
+		} else {
+			// Subcommand help
+			out.WriteString(strings.Join(node.Path, " "))
+			if node.Summary != "" {
+				out.WriteString(" - ")
+				out.WriteString(node.Summary)
+			}
+			out.WriteString("\n\n")
+
+			out.WriteString("usage: ")
+			out.WriteString(node.Usage)
+			out.WriteString("\n\n")
+
+			// Show longer description if available
+			if node.Description != "" {
+				out.WriteString(node.Description)
+				out.WriteString("\n\n")
+			}
+
+			if len(node.Children) > 0 {
+				out.WriteString("COMMANDS\n")
+
+				children := make([]*DispatchNode, 0, len(node.Children))
+				for _, child := range node.Children {
+					children = append(children, child)
 				}
 
-				out.WriteString(fmt.Sprintf(
-					"   %-20s %s\n",
-					name,
-					f.Description,
-				))
+				sort.Slice(children, func(i, j int) bool {
+					return children[i].Name < children[j].Name
+				})
+
+				for _, child := range children {
+					fmt.Fprintf(&out, "   %-12s %s\n", child.Name, child.Summary)
+				}
+				out.WriteString("\n")
 			}
-			out.WriteString("\n")
+
+			if len(node.Flags) > 0 {
+				out.WriteString("FLAGS\n")
+				for _, f := range node.Flags {
+					name := strings.Join(f.Names, ", ")
+					if f.ValueHint != "" {
+						name = name + " " + f.ValueHint
+					}
+					fmt.Fprintf(&out, "   %-20s %s\n", name, f.Description)
+				}
+				out.WriteString("\n")
+			}
+
+			out.WriteString("See 'fp help <command>' to read about a specific command.\n")
 		}
 
-		out.WriteString(
-			"See 'fp help <command>' to read about a specific command.\n",
-		)
+		ui.Pager(out.String())
+		return nil
+	}
+}
+
+// TopicHelpAction generates help output for a conceptual topic.
+func TopicHelpAction(topic *help.Topic) CommandFunc {
+	return func(args []string, flags []string) error {
+		ui.Pager(topic.Content())
+		return nil
+	}
+}
+
+// TopicsListAction lists all available help topics.
+func TopicsListAction() CommandFunc {
+	return func(args []string, flags []string) error {
+		var out bytes.Buffer
+
+		out.WriteString("The following help topics are available:\n\n")
+
+		for _, topic := range help.AllTopics() {
+			fmt.Fprintf(&out, "   %-12s %s\n", topic.Name, topic.Summary)
+		}
+
+		out.WriteString("\nSee 'fp help <topic>' to read about a specific topic.\n")
 
 		ui.Pager(out.String())
 		return nil
