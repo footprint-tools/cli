@@ -1,25 +1,26 @@
-package actions
+package config
 
 import (
-	"fmt"
-
-	"github.com/Skryensya/footprint/internal/config"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func ConfigGet(args []string, _ []string) error {
+func Get(args []string, flags []string) error {
+	return get(args, flags, DefaultDeps())
+}
+
+func get(args []string, _ []string, deps Deps) error {
 	if len(args) < 1 {
 		return usage.MissingArgument("key")
 	}
 
 	key := args[0]
 
-	lines, err := config.ReadLines()
+	lines, err := deps.ReadLines()
 	if err != nil {
 		return err
 	}
 
-	configMap, err := config.Parse(lines)
+	configMap, err := deps.Parse(lines)
 	if err != nil {
 		return err
 	}
@@ -30,6 +31,6 @@ func ConfigGet(args []string, _ []string) error {
 		return usage.InvalidConfigKey(key)
 	}
 
-	fmt.Println(value)
+	deps.Println(value)
 	return nil
 }
