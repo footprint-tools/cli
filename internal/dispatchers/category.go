@@ -4,27 +4,35 @@ type CommandCategory int
 
 const (
 	CategoryUncategorized CommandCategory = iota
-	CategoryInfo
-	CategoryConfig
-	CategoryRepo
+	CategoryGetStarted        // First steps: setup, track
+	CategoryInspectActivity   // Viewing activity and state
+	CategoryManageRepos       // Managing tracked repositories
+	CategoryConfig            // Configuration
+	CategoryPlumbing          // Low-level/plumbing commands (record)
 )
 
 func (c CommandCategory) String() string {
 	switch c {
-	case CategoryInfo:
-		return "Information and diagnostics"
+	case CategoryGetStarted:
+		return "get started"
+	case CategoryInspectActivity:
+		return "inspect activity and state"
+	case CategoryManageRepos:
+		return "manage tracked repositories"
 	case CategoryConfig:
-		return "Configuration and preferences"
-	case CategoryRepo:
-		return "Handle repository tracking"
+		return "configure fp"
+	case CategoryPlumbing:
+		return "low-level commands (plumbing)"
 	default:
 		return "other commands"
 	}
 }
 
 var categoryOrder = []CommandCategory{
-	CategoryInfo,
-	CategoryRepo,
+	CategoryGetStarted,
+	CategoryInspectActivity,
+	CategoryManageRepos,
 	CategoryConfig,
+	CategoryPlumbing,
 	CategoryUncategorized,
 }
