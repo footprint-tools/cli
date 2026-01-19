@@ -138,15 +138,13 @@ func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) er
 
 		// Create event
 		event := store.RepoEvent{
-			RepoID:        string(repoID),
-			RepoPath:      repoRoot,
-			Commit:        c.Hash,
-			CommitMessage: c.Subject,
-			Branch:        branch,
-			Author:        fmt.Sprintf("%s <%s>", c.AuthorName, c.AuthorEmail),
-			Timestamp:     timestamp.UTC(),
-			Status:        store.StatusPending,
-			Source:        store.SourceBackfill,
+			RepoID:    string(repoID),
+			RepoPath:  repoRoot,
+			Commit:    c.Hash,
+			Branch:    branch,
+			Timestamp: timestamp.UTC(),
+			Status:    store.StatusPending,
+			Source:    store.SourceBackfill,
 		}
 
 		// Insert (UPSERT handles duplicates)

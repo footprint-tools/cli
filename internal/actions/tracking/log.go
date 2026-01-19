@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
+	"github.com/Skryensya/footprint/internal/git"
 	"github.com/Skryensya/footprint/internal/store"
 )
 
@@ -32,6 +33,7 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	// Parse flags
 	oneline := flags.Has("--oneline")
+	enrich := flags.Has("--enrich")
 
 	// Get current max ID as starting point (we only want new events)
 	lastID, err := store.GetMaxEventID(db)
@@ -69,7 +71,12 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			}
 
 			for _, event := range events {
-				fmt.Fprintln(os.Stdout, FormatEvent(event, oneline))
+				if enrich {
+					meta := git.GetCommitMetadata(event.RepoPath, event.Commit)
+					fmt.Fprintln(os.Stdout, FormatEventEnriched(event, meta, oneline))
+				} else {
+					fmt.Fprintln(os.Stdout, FormatEvent(event, oneline))
+				}
 				lastID = event.ID
 			}
 		}

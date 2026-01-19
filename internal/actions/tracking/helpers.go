@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/Skryensya/footprint/internal/store"
 )
@@ -35,14 +34,6 @@ func resolvePath(args []string) (string, error) {
 	}
 
 	return abs, nil
-}
-
-func truncateMessage(message string, max int) string {
-	message = strings.TrimSpace(message)
-	if len(message) <= max {
-		return message
-	}
-	return message[:max] + "..."
 }
 
 func parseStatus(s string) (store.Status, bool) {
@@ -79,23 +70,4 @@ func parseSource(s string) (store.Source, bool) {
 	default:
 		return 0, false
 	}
-}
-
-func parseDate(s string) (time.Time, bool) {
-	formats := []string{
-		"2006-01-02",
-		"2006-01-02T15:04:05",
-		"2006-01-02 15:04:05",
-		"2006-01-02T15:04",
-		"2006-01-02 15:04",
-		time.RFC3339,
-	}
-
-	for _, format := range formats {
-		if t, err := time.Parse(format, s); err == nil {
-			return t, true
-		}
-	}
-
-	return time.Time{}, false
 }

@@ -427,7 +427,7 @@ func appendRecord(path string, e store.RepoEvent, meta git.CommitMetadata) error
 	w := csv.NewWriter(file)
 
 	// Sanitize commit message: single line, no newlines
-	msg := strings.ReplaceAll(e.CommitMessage, "\n", " ")
+	msg := strings.ReplaceAll(meta.Subject, "\n", " ")
 	msg = strings.ReplaceAll(msg, "\r", "")
 	msg = strings.TrimSpace(msg)
 

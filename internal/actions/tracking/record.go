@@ -78,19 +78,14 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	source := resolveSource(deps)
 
-	msg, _ := deps.CommitMessage()
-	author, _ := deps.CommitAuthor()
-
 	err = deps.InsertEvent(db, store.RepoEvent{
-		RepoID:        string(repoID),
-		RepoPath:      repoRoot,
-		Commit:        commit,
-		CommitMessage: msg,
-		Branch:        branch,
-		Author:        author,
-		Timestamp:     deps.Now().UTC(),
-		Status:        store.StatusPending,
-		Source:        source,
+		RepoID:    string(repoID),
+		RepoPath:  repoRoot,
+		Commit:    commit,
+		Branch:    branch,
+		Timestamp: deps.Now().UTC(),
+		Status:    store.StatusPending,
+		Source:    source,
 	})
 
 	if showErrors {

@@ -47,6 +47,11 @@ var (
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
+			Names:       []string{"--enrich", "-e"},
+			Description: "Show commit message and author from git",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
 			Names:       []string{"--status"},
 			ValueHint:   "<status>",
 			Description: "Filter by status (pending, exported, orphaned, skipped)",
@@ -150,6 +155,11 @@ var (
 		{
 			Names:       []string{"--oneline"},
 			Description: "Show one event per line",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--enrich", "-e"},
+			Description: "Show commit message and author from git",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}

@@ -111,7 +111,7 @@ func TestTablesCreated(t *testing.T) {
 	}
 }
 
-func TestAuthorColumn(t *testing.T) {
+func TestRedundantColumnsRemoved(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
@@ -122,14 +122,17 @@ func TestAuthorColumn(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	var count int
-	err = db.QueryRow(`
-		SELECT COUNT(*) FROM pragma_table_info('repo_events') WHERE name = 'author'
-	`).Scan(&count)
-	if err != nil {
-		t.Fatalf("check author: %v", err)
-	}
-	if count != 1 {
-		t.Error("author column not found")
+	// Verify commit_message and author columns were removed
+	for _, col := range []string{"commit_message", "author"} {
+		var count int
+		err = db.QueryRow(`
+			SELECT COUNT(*) FROM pragma_table_info('repo_events') WHERE name = ?
+		`, col).Scan(&count)
+		if err != nil {
+			t.Fatalf("check %s: %v", col, err)
+		}
+		if count != 0 {
+			t.Errorf("%s column should not exist", col)
+		}
 	}
 }

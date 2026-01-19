@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
+	"github.com/Skryensya/footprint/internal/git"
 	"github.com/Skryensya/footprint/internal/store"
 )
 
@@ -22,6 +23,7 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	var filter store.EventFilter
 
 	oneline := flags.Has("--oneline")
+	enrich := flags.Has("--enrich")
 
 	if statusStr := flags.String("--status", ""); statusStr != "" {
 		if status, ok := parseStatus(statusStr); ok {
@@ -62,7 +64,12 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	var output bytes.Buffer
 
 	for _, event := range events {
-		output.WriteString(FormatEvent(event, oneline))
+		if enrich {
+			meta := git.GetCommitMetadata(event.RepoPath, event.Commit)
+			output.WriteString(FormatEventEnriched(event, meta, oneline))
+		} else {
+			output.WriteString(FormatEvent(event, oneline))
+		}
 		output.WriteString("\n")
 	}
 

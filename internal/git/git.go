@@ -151,16 +151,17 @@ func runGit(args ...string) (string, error) {
 
 // CommitMetadata contains enriched data from Git for a specific commit.
 type CommitMetadata struct {
-	CommitShort   string // First 10 characters of commit hash
-	ParentCommits string // Comma-separated list of parent commit hashes
-	IsMerge       bool   // True if commit has more than one parent
-	AuthorName    string
-	AuthorEmail   string
-	CommitterName string
+	CommitShort    string // First 10 characters of commit hash
+	ParentCommits  string // Comma-separated list of parent commit hashes
+	IsMerge        bool   // True if commit has more than one parent
+	AuthorName     string
+	AuthorEmail    string
+	CommitterName  string
 	CommitterEmail string
-	FilesChanged  int
-	Insertions    int
-	Deletions     int
+	Subject        string // Commit message (first line)
+	FilesChanged   int
+	Insertions     int
+	Deletions      int
 }
 
 // GetCommitMetadata retrieves enriched metadata for a specific commit from a repository.
@@ -178,16 +179,17 @@ func GetCommitMetadata(repoPath, commit string) CommitMetadata {
 		meta.IsMerge = len(parentList) > 1
 	}
 
-	// Get author and committer info using git show with format
-	// Format: author_name%x00author_email%x00committer_name%x00committer_email
-	format := "%an%x00%ae%x00%cn%x00%ce"
+	// Get author, committer info and subject using git show with format
+	// Format: author_name%x00author_email%x00committer_name%x00committer_email%x00subject
+	format := "%an%x00%ae%x00%cn%x00%ce%x00%s"
 	if info, err := runGitInRepo(repoPath, "show", "-s", "--format="+format, commit); err == nil {
 		parts := strings.Split(info, "\x00")
-		if len(parts) >= 4 {
+		if len(parts) >= 5 {
 			meta.AuthorName = parts[0]
 			meta.AuthorEmail = parts[1]
 			meta.CommitterName = parts[2]
 			meta.CommitterEmail = parts[3]
+			meta.Subject = parts[4]
 		}
 	}
 
