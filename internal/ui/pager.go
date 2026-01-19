@@ -9,7 +9,19 @@ import (
 	"github.com/Skryensya/footprint/internal/config"
 )
 
+var pagerDisabled bool
+
+// DisablePager disables the pager globally.
+func DisablePager() {
+	pagerDisabled = true
+}
+
 func Pager(content string) {
+	if pagerDisabled {
+		fmt.Print(content)
+		return
+	}
+
 	pager := "less"
 
 	lines, err := config.ReadLines()

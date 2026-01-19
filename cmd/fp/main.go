@@ -6,7 +6,10 @@ import (
 
 	"github.com/Skryensya/footprint/internal/cli"
 	"github.com/Skryensya/footprint/internal/dispatchers"
+	"github.com/Skryensya/footprint/internal/ui"
+	"github.com/Skryensya/footprint/internal/ui/style"
 	"github.com/Skryensya/footprint/internal/usage"
+	"golang.org/x/term"
 )
 
 func main() {
@@ -14,6 +17,15 @@ func main() {
 
 	flags := extractFlags(args)
 	commands := extractCommands(args)
+
+	// Enable styling if stdout is a terminal and --no-color is not set
+	enableColor := term.IsTerminal(int(os.Stdout.Fd())) && !hasFlag(flags, "--no-color")
+	style.Init(enableColor)
+
+	// Disable pager if --no-pager is set
+	if hasFlag(flags, "--no-pager") {
+		ui.DisablePager()
+	}
 
 	root := cli.BuildTree()
 
@@ -57,4 +69,13 @@ func extractCommands(args []string) []string {
 		}
 	}
 	return cmds
+}
+
+func hasFlag(flags []string, name string) bool {
+	for _, f := range flags {
+		if f == name {
+			return true
+		}
+	}
+	return false
 }

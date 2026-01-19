@@ -8,6 +8,7 @@ import (
 
 	"github.com/Skryensya/footprint/internal/help"
 	"github.com/Skryensya/footprint/internal/ui"
+	"github.com/Skryensya/footprint/internal/ui/style"
 )
 
 // commandDisplayOrder defines explicit ordering within categories.
@@ -34,6 +35,29 @@ var commandDisplayOrder = map[string]int{
 	"config list":  4,
 }
 
+// formatUsage styles the usage line with the command in Info color and the rest muted.
+func formatUsage(usage string) string {
+	// Find where the command ends (first [ or <)
+	cmdEnd := len(usage)
+	for i, c := range usage {
+		if c == '[' || c == '<' {
+			cmdEnd = i
+			break
+		}
+	}
+
+	cmd := strings.TrimSpace(usage[:cmdEnd])
+	rest := ""
+	if cmdEnd < len(usage) {
+		rest = usage[cmdEnd:]
+	}
+
+	if rest == "" {
+		return style.Info(cmd)
+	}
+	return style.Info(cmd) + " " + style.Muted(rest)
+}
+
 func collectLeafCommands(node *DispatchNode, out *[]*DispatchNode) {
 	if node.Action != nil {
 		*out = append(*out, node)
@@ -51,16 +75,14 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 		var out bytes.Buffer
 
 		if node == root {
-			// Root help: git-like format with "fp - " prefix
+			// Root help: git-like format
 			out.WriteString("fp - ")
 			out.WriteString(node.Summary)
 			out.WriteString("\n\n")
 
-			out.WriteString("usage: ")
-			out.WriteString(node.Usage)
+			out.WriteString("USAGE\n   ")
+			out.WriteString(formatUsage(node.Usage))
 			out.WriteString("\n\n")
-
-			out.WriteString("These are common fp commands used in various situations:\n\n")
 
 			grouped := make(map[CommandCategory][]*DispatchNode)
 
@@ -102,22 +124,21 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 
 				for _, cmd := range cmds {
 					displayName := strings.Join(cmd.Path[1:], " ")
-					fmt.Fprintf(&out, "   %-18s %s\n", displayName, cmd.Summary)
+					fmt.Fprintf(&out, "   %s  %s\n", style.Info(fmt.Sprintf("%-16s", displayName)), cmd.Summary)
 				}
 				out.WriteString("\n")
 			}
 
-			// Conceptual guides section - uses help package for topics
+			// Conceptual guides section
 			out.WriteString("conceptual guides\n")
 			for _, topic := range help.AllTopics() {
-				fmt.Fprintf(&out, "   %-18s %s\n", topic.Name, topic.Summary)
+				fmt.Fprintf(&out, "   %s  %s\n", style.Muted(fmt.Sprintf("%-16s", topic.Name)), topic.Summary)
 			}
 			out.WriteString("\n")
 
 			// Footer
 			out.WriteString("See 'fp help <command>' for detailed help on a specific command.\n")
 			out.WriteString("See 'fp help <topic>' for conceptual documentation.\n")
-			out.WriteString("See 'fp help topics' for a list of available topics.\n")
 		} else {
 			// Subcommand help
 			out.WriteString(strings.Join(node.Path, " "))
@@ -127,8 +148,8 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 			}
 			out.WriteString("\n\n")
 
-			out.WriteString("usage: ")
-			out.WriteString(node.Usage)
+			out.WriteString("USAGE\n   ")
+			out.WriteString(formatUsage(node.Usage))
 			out.WriteString("\n\n")
 
 			// Show longer description if available
@@ -150,7 +171,7 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 				})
 
 				for _, child := range children {
-					fmt.Fprintf(&out, "   %-12s %s\n", child.Name, child.Summary)
+					fmt.Fprintf(&out, "   %s  %s\n", style.Info(fmt.Sprintf("%-12s", child.Name)), child.Summary)
 				}
 				out.WriteString("\n")
 			}
@@ -162,7 +183,7 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 					if f.ValueHint != "" {
 						name = name + " " + f.ValueHint
 					}
-					fmt.Fprintf(&out, "   %-20s %s\n", name, f.Description)
+					fmt.Fprintf(&out, "   %s  %s\n", style.Info(fmt.Sprintf("%-24s", name)), f.Description)
 				}
 				out.WriteString("\n")
 			}
@@ -188,10 +209,10 @@ func TopicsListAction() CommandFunc {
 	return func(args []string, flags []string) error {
 		var out bytes.Buffer
 
-		out.WriteString("The following help topics are available:\n\n")
+		out.WriteString("TOPICS\n\n")
 
 		for _, topic := range help.AllTopics() {
-			fmt.Fprintf(&out, "   %-12s %s\n", topic.Name, topic.Summary)
+			fmt.Fprintf(&out, "   %s  %s\n", style.Muted(fmt.Sprintf("%-12s", topic.Name)), topic.Summary)
 		}
 
 		out.WriteString("\nSee 'fp help <topic>' to read about a specific topic.\n")
