@@ -1,14 +1,15 @@
 package config
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Set(args []string, flags []string) error {
+func Set(args []string, flags *dispatchers.ParsedFlags) error {
 	return set(args, flags, DefaultDeps())
 }
 
-func set(args []string, _ []string, deps Deps) error {
+func set(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if len(args) < 2 {
 		return usage.MissingArgument("key value")
 	}

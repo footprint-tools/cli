@@ -1,11 +1,11 @@
 package dispatchers
 
-type CommandFunc func(args []string, flags []string) error
+type CommandFunc func(args []string, flags *ParsedFlags) error
 
 type Resolution struct {
 	Node     *DispatchNode
 	Args     []string
-	Flags    []string
+	Flags    *ParsedFlags
 	Execute  CommandFunc
 	ExitCode int // Non-zero to exit with specific code after Execute
 }

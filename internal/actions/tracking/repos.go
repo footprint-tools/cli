@@ -2,13 +2,15 @@ package tracking
 
 import (
 	"sort"
+
+	"github.com/Skryensya/footprint/internal/dispatchers"
 )
 
-func Repos(args []string, flags []string) error {
+func Repos(args []string, flags *dispatchers.ParsedFlags) error {
 	return repos(args, flags, DefaultDeps())
 }
 
-func repos(_ []string, _ []string, deps Deps) error {
+func repos(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	trackedRepos, err := deps.ListTracked()
 	if err != nil {
 		return err

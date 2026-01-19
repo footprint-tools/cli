@@ -1,14 +1,15 @@
 package tracking
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Track(args []string, flags []string) error {
+func Track(args []string, flags *dispatchers.ParsedFlags) error {
 	return track(args, flags, DefaultDeps())
 }
 
-func track(args []string, flags []string, deps Deps) error {
+func track(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	if !deps.GitIsAvailable() {
 		return usage.GitNotInstalled()
 	}
@@ -50,9 +51,9 @@ func track(args []string, flags []string, deps Deps) error {
 
 // resolveRemoteURL returns the remote URL to use.
 // Priority: --remote flag > origin > single remote > error if ambiguous.
-func resolveRemoteURL(repoRoot string, flags []string, deps Deps) (string, error) {
+func resolveRemoteURL(repoRoot string, flags *dispatchers.ParsedFlags, deps Deps) (string, error) {
 	// Check for --remote flag
-	specifiedRemote := getFlagValue(flags, "--remote")
+	specifiedRemote := flags.String("--remote", "")
 	if specifiedRemote != "" {
 		url, err := deps.GetRemoteURL(repoRoot, specifiedRemote)
 		if err != nil {

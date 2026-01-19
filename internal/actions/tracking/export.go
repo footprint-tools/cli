@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Skryensya/footprint/internal/config"
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/git"
 	repodomain "github.com/Skryensya/footprint/internal/repo"
 	"github.com/Skryensya/footprint/internal/store"
@@ -50,15 +51,15 @@ var csvHeader = []string{
 }
 
 // Export handles the manual `fp export` command.
-func Export(args []string, flags []string) error {
+func Export(args []string, flags *dispatchers.ParsedFlags) error {
 	return export(args, flags, DefaultDeps())
 }
 
-func export(_ []string, flags []string, deps Deps) error {
-	force := hasFlag(flags, "--force")
-	dryRun := hasFlag(flags, "--dry-run")
-	openDir := hasFlag(flags, "--open")
-	setRemote := getFlagValue(flags, "--set-remote")
+func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	force := flags.Has("--force")
+	dryRun := flags.Has("--dry-run")
+	openDir := flags.Has("--open")
+	setRemote := flags.String("--set-remote", "")
 
 	exportRepo := getExportRepo()
 

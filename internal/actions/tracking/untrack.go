@@ -1,17 +1,18 @@
 package tracking
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/repo"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Untrack(args []string, flags []string) error {
+func Untrack(args []string, flags *dispatchers.ParsedFlags) error {
 	return untrack(args, flags, DefaultDeps())
 }
 
-func untrack(args []string, flags []string, deps Deps) error {
+func untrack(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	// Check for --id flag first
-	idValue := getFlagValue(flags, "--id")
+	idValue := flags.String("--id", "")
 	if idValue != "" {
 		return untrackByID(idValue, deps)
 	}

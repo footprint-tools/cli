@@ -1,14 +1,17 @@
 package setup
 
-import "github.com/Skryensya/footprint/internal/usage"
+import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
+	"github.com/Skryensya/footprint/internal/usage"
+)
 
-func Check(args []string, flags []string) error {
+func Check(args []string, flags *dispatchers.ParsedFlags) error {
 	return check(args, flags, DefaultDeps())
 }
 
-func check(_ []string, flags []string, deps Deps) error {
-	global := hasFlag(flags, "--global")
-	repo := hasFlag(flags, "--repo")
+func check(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	global := flags.Has("--global")
+	repo := flags.Has("--repo")
 
 	if global && repo {
 		return usage.InvalidFlag("cannot use both --repo and --global")

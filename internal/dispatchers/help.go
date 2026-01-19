@@ -71,7 +71,7 @@ func collectLeafCommands(node *DispatchNode, out *[]*DispatchNode) {
 
 // HelpAction generates help output for a command node.
 func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
-	return func(args []string, flags []string) error {
+	return func(args []string, flags *ParsedFlags) error {
 		var out bytes.Buffer
 
 		if node == root {
@@ -198,7 +198,7 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 
 // TopicHelpAction generates help output for a conceptual topic.
 func TopicHelpAction(topic *help.Topic) CommandFunc {
-	return func(args []string, flags []string) error {
+	return func(args []string, flags *ParsedFlags) error {
 		ui.Pager(topic.Content())
 		return nil
 	}
@@ -206,7 +206,7 @@ func TopicHelpAction(topic *help.Topic) CommandFunc {
 
 // TopicsListAction lists all available help topics.
 func TopicsListAction() CommandFunc {
-	return func(args []string, flags []string) error {
+	return func(args []string, flags *ParsedFlags) error {
 		var out bytes.Buffer
 
 		out.WriteString("TOPICS\n\n")

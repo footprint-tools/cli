@@ -37,26 +37,6 @@ func resolvePath(args []string) (string, error) {
 	return abs, nil
 }
 
-func hasFlag(flags []string, name string) bool {
-	for _, f := range flags {
-		if f == name {
-			return true
-		}
-	}
-	return false
-}
-
-// getFlagValue extracts the value from a flag like --remote=upstream
-func getFlagValue(flags []string, name string) string {
-	prefix := name + "="
-	for _, f := range flags {
-		if strings.HasPrefix(f, prefix) {
-			return strings.TrimPrefix(f, prefix)
-		}
-	}
-	return ""
-}
-
 func truncateMessage(message string, max int) string {
 	message = strings.TrimSpace(message)
 	if len(message) <= max {

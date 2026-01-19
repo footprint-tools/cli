@@ -4,17 +4,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/paths"
 	repodomain "github.com/Skryensya/footprint/internal/repo"
 	"github.com/Skryensya/footprint/internal/store"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Adopt(args []string, flags []string) error {
+func Adopt(args []string, flags *dispatchers.ParsedFlags) error {
 	return adopt(args, flags, DefaultDeps())
 }
 
-func adopt(args []string, _ []string, deps Deps) error {
+func adopt(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if !deps.GitIsAvailable() {
 		return usage.GitNotInstalled()
 	}

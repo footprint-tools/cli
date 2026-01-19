@@ -1,15 +1,16 @@
 package config
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Unset(args []string, flags []string) error {
+func Unset(args []string, flags *dispatchers.ParsedFlags) error {
 	return unset(args, flags, DefaultDeps())
 }
 
-func unset(args []string, flags []string, deps Deps) error {
-	if hasFlag(flags, "--all") {
+func unset(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	if flags.Has("--all") {
 		if len(args) > 0 {
 			return usage.InvalidFlag("--all does not take arguments")
 		}

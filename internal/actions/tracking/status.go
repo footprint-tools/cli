@@ -1,15 +1,16 @@
 package tracking
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	repodomain "github.com/Skryensya/footprint/internal/repo"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Status(args []string, flags []string) error {
+func Status(args []string, flags *dispatchers.ParsedFlags) error {
 	return status(args, flags, DefaultDeps())
 }
 
-func status(args []string, _ []string, deps Deps) error {
+func status(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if !deps.GitIsAvailable() {
 		return usage.GitNotInstalled()
 	}

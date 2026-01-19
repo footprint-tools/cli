@@ -3,74 +3,52 @@ package tracking
 import (
 	"bytes"
 	"fmt"
-	"strconv"
-	"strings"
 
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/store"
 )
 
-func Activity(args []string, flags []string) error {
+func Activity(args []string, flags *dispatchers.ParsedFlags) error {
 	return activity(args, flags, DefaultDeps())
 }
 
-func activity(_ []string, flags []string, deps Deps) error {
+func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	db, err := deps.OpenDB(deps.DBPath())
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
-	var (
-		filter  store.EventFilter
-		oneline bool
-	)
+	var filter store.EventFilter
 
-	for _, flag := range flags {
-		if flag == "--oneline" {
-			oneline = true
-			continue
-		}
+	oneline := flags.Has("--oneline")
 
-		if strings.HasPrefix(flag, "--status=") {
-			if status, ok := parseStatus(strings.TrimPrefix(flag, "--status=")); ok {
-				filter.Status = &status
-			}
-			continue
+	if statusStr := flags.String("--status", ""); statusStr != "" {
+		if status, ok := parseStatus(statusStr); ok {
+			filter.Status = &status
 		}
+	}
 
-		if strings.HasPrefix(flag, "--source=") {
-			if source, ok := parseSource(strings.TrimPrefix(flag, "--source=")); ok {
-				filter.Source = &source
-			}
-			continue
+	if sourceStr := flags.String("--source", ""); sourceStr != "" {
+		if source, ok := parseSource(sourceStr); ok {
+			filter.Source = &source
 		}
+	}
 
-		if strings.HasPrefix(flag, "--since=") {
-			if t, ok := parseDate(strings.TrimPrefix(flag, "--since=")); ok {
-				filter.Since = &t
-			}
-			continue
-		}
+	if since := flags.Date("--since"); since != nil {
+		filter.Since = since
+	}
 
-		if strings.HasPrefix(flag, "--until=") {
-			if t, ok := parseDate(strings.TrimPrefix(flag, "--until=")); ok {
-				filter.Until = &t
-			}
-			continue
-		}
+	if until := flags.Date("--until"); until != nil {
+		filter.Until = until
+	}
 
-		if strings.HasPrefix(flag, "--repo=") {
-			repoID := strings.TrimPrefix(flag, "--repo=")
-			filter.RepoID = &repoID
-			continue
-		}
+	if repoID := flags.String("--repo", ""); repoID != "" {
+		filter.RepoID = &repoID
+	}
 
-		if strings.HasPrefix(flag, "--limit=") {
-			if n, err := strconv.Atoi(strings.TrimPrefix(flag, "--limit=")); err == nil && n > 0 {
-				filter.Limit = n
-			}
-			continue
-		}
+	if limit := flags.Int("--limit", 0); limit > 0 {
+		filter.Limit = limit
 	}
 
 	events, err := deps.ListEvents(db, filter)

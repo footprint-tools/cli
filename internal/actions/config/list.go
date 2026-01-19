@@ -1,10 +1,12 @@
 package config
 
-func List(args []string, flags []string) error {
+import "github.com/Skryensya/footprint/internal/dispatchers"
+
+func List(args []string, flags *dispatchers.ParsedFlags) error {
 	return list(args, flags, DefaultDeps())
 }
 
-func list(_ []string, _ []string, deps Deps) error {
+func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	configMap, err := deps.GetAll()
 	if err != nil {
 		return err

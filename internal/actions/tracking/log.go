@@ -8,16 +8,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/store"
 )
 
 const pollInterval = 300 * time.Millisecond
 
-func Log(args []string, flags []string) error {
+func Log(args []string, flags *dispatchers.ParsedFlags) error {
 	return logCmd(args, flags, DefaultDeps())
 }
 
-func logCmd(_ []string, flags []string, deps Deps) error {
+func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	db, err := deps.OpenDB(deps.DBPath())
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
@@ -30,12 +31,7 @@ func logCmd(_ []string, flags []string, deps Deps) error {
 	}
 
 	// Parse flags
-	oneline := false
-	for _, flag := range flags {
-		if flag == "--oneline" {
-			oneline = true
-		}
-	}
+	oneline := flags.Has("--oneline")
 
 	// Get current max ID as starting point (we only want new events)
 	lastID, err := store.GetMaxEventID(db)

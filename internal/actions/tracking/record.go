@@ -1,16 +1,17 @@
 package tracking
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/store"
 )
 
-func Record(args []string, flags []string) error {
+func Record(args []string, flags *dispatchers.ParsedFlags) error {
 	return record(args, flags, DefaultDeps())
 }
 
-func record(_ []string, flags []string, deps Deps) error {
-	verbose := hasFlag(flags, "--verbose")
-	manual := hasFlag(flags, "--manual")
+func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	verbose := flags.Has("--verbose")
+	manual := flags.Has("--manual")
 
 	// Show note when running manually (no FP_SOURCE env var)
 	isFromHook := deps.Getenv("FP_SOURCE") != ""

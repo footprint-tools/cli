@@ -6,24 +6,25 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/git"
 	"github.com/Skryensya/footprint/internal/store"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
 // Backfill imports historical commits from a git repository into the database.
-func Backfill(args []string, flags []string) error {
+func Backfill(args []string, flags *dispatchers.ParsedFlags) error {
 	return backfill(args, flags, DefaultDeps())
 }
 
-func backfill(args []string, flags []string, deps Deps) error {
+func backfill(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	// Check if running in background mode
-	if hasFlag(flags, "--background") {
+	if flags.Has("--background") {
 		return doBackfillWork(args, flags, deps)
 	}
 
 	// Check for dry-run (runs in foreground)
-	if hasFlag(flags, "--dry-run") {
+	if flags.Has("--dry-run") {
 		return doBackfillDryRun(args, flags, deps)
 	}
 
@@ -32,7 +33,7 @@ func backfill(args []string, flags []string, deps Deps) error {
 }
 
 // launchBackfillAndWatch starts the backfill in background and runs watch.
-func launchBackfillAndWatch(args []string, flags []string, deps Deps) error {
+func launchBackfillAndWatch(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	// Build the command to run backfill in background
 	execPath, err := os.Executable()
 	if err != nil {
@@ -44,7 +45,7 @@ func launchBackfillAndWatch(args []string, flags []string, deps Deps) error {
 	cmdArgs = append(cmdArgs, args...)
 
 	// Pass through filter flags
-	for _, f := range flags {
+	for _, f := range flags.Raw() {
 		if f != "--dry-run" { // Don't pass dry-run to background
 			cmdArgs = append(cmdArgs, f)
 		}
@@ -62,11 +63,11 @@ func launchBackfillAndWatch(args []string, flags []string, deps Deps) error {
 	deps.Println("Starting backfill in background...")
 
 	// Now run the watch command in foreground
-	return Log([]string{}, []string{"--oneline"})
+	return Log([]string{}, dispatchers.NewParsedFlags([]string{"--oneline"}))
 }
 
 // doBackfillWork performs the actual backfill (runs in background).
-func doBackfillWork(args []string, flags []string, deps Deps) error {
+func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	if !deps.GitIsAvailable() {
 		return usage.GitNotInstalled()
 	}
@@ -91,11 +92,9 @@ func doBackfillWork(args []string, flags []string, deps Deps) error {
 
 	// Parse filter options
 	opts := git.ListCommitsOptions{
-		Since: getFlagValue(flags, "--since"),
-		Until: getFlagValue(flags, "--until"),
-	}
-	if limitStr := getFlagValue(flags, "--limit"); limitStr != "" {
-		fmt.Sscanf(limitStr, "%d", &opts.Limit)
+		Since: flags.String("--since", ""),
+		Until: flags.String("--until", ""),
+		Limit: flags.Int("--limit", 0),
 	}
 
 	// Get commits from git log
@@ -118,7 +117,7 @@ func doBackfillWork(args []string, flags []string, deps Deps) error {
 	_ = deps.InitDB(db)
 
 	// Check for --branch override
-	branchOverride := getFlagValue(flags, "--branch")
+	branchOverride := flags.String("--branch", "")
 
 	// Insert each commit as an event
 	for _, c := range commits {
@@ -158,7 +157,7 @@ func doBackfillWork(args []string, flags []string, deps Deps) error {
 }
 
 // doBackfillDryRun shows what would be imported without doing it.
-func doBackfillDryRun(args []string, flags []string, deps Deps) error {
+func doBackfillDryRun(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	if !deps.GitIsAvailable() {
 		return usage.GitNotInstalled()
 	}
@@ -180,11 +179,9 @@ func doBackfillDryRun(args []string, flags []string, deps Deps) error {
 	}
 
 	opts := git.ListCommitsOptions{
-		Since: getFlagValue(flags, "--since"),
-		Until: getFlagValue(flags, "--until"),
-	}
-	if limitStr := getFlagValue(flags, "--limit"); limitStr != "" {
-		fmt.Sscanf(limitStr, "%d", &opts.Limit)
+		Since: flags.String("--since", ""),
+		Until: flags.String("--until", ""),
+		Limit: flags.Int("--limit", 0),
 	}
 
 	commits, err := git.ListCommits(repoRoot, opts)
@@ -195,7 +192,7 @@ func doBackfillDryRun(args []string, flags []string, deps Deps) error {
 	deps.Printf("Repository: %s\n", repoID)
 	deps.Printf("Found %d commits to import:\n\n", len(commits))
 
-	branchOverride := getFlagValue(flags, "--branch")
+	branchOverride := flags.String("--branch", "")
 
 	for _, c := range commits {
 		branch := branchOverride

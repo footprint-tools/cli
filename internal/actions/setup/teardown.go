@@ -1,17 +1,18 @@
 package setup
 
 import (
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Teardown(args []string, flags []string) error {
+func Teardown(args []string, flags *dispatchers.ParsedFlags) error {
 	return teardown(args, flags, DefaultDeps())
 }
 
-func teardown(_ []string, flags []string, deps Deps) error {
-	force := hasFlag(flags, "--force")
-	global := hasFlag(flags, "--global")
-	repo := hasFlag(flags, "--repo")
+func teardown(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	force := flags.Has("--force")
+	global := flags.Has("--global")
+	repo := flags.Has("--repo")
 
 	if global && repo {
 		return usage.InvalidFlag("cannot use both --repo and --global")

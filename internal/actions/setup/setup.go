@@ -3,18 +3,19 @@ package setup
 import (
 	"strings"
 
+	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/hooks"
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Setup(args []string, flags []string) error {
+func Setup(args []string, flags *dispatchers.ParsedFlags) error {
 	return setup(args, flags, DefaultDeps())
 }
 
-func setup(_ []string, flags []string, deps Deps) error {
-	force := hasFlag(flags, "--force")
-	global := hasFlag(flags, "--global")
-	repo := hasFlag(flags, "--repo")
+func setup(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	force := flags.Has("--force")
+	global := flags.Has("--global")
+	repo := flags.Has("--repo")
 
 	if global && repo {
 		return usage.InvalidFlag("cannot use both --repo and --global")

@@ -15,20 +15,21 @@ import (
 func main() {
 	args := os.Args[1:]
 
-	flags := extractFlags(args)
+	rawFlags := extractFlags(args)
 	commands := extractCommands(args)
+	flags := dispatchers.NewParsedFlags(rawFlags)
 
 	// Enable styling if stdout is a terminal and --no-color is not set
-	enableColor := term.IsTerminal(int(os.Stdout.Fd())) && !hasFlag(flags, "--no-color")
+	enableColor := term.IsTerminal(int(os.Stdout.Fd())) && !flags.Has("--no-color")
 	style.Init(enableColor)
 
 	// Disable pager if --no-pager is set
-	if hasFlag(flags, "--no-pager") {
+	if flags.Has("--no-pager") {
 		ui.DisablePager()
 	}
 
 	// Set pager override if --pager=<cmd> is set
-	if pager := getFlagValue(flags, "--pager"); pager != "" {
+	if pager := flags.String("--pager", ""); pager != "" {
 		ui.SetPager(pager)
 	}
 
@@ -74,23 +75,4 @@ func extractCommands(args []string) []string {
 		}
 	}
 	return cmds
-}
-
-func hasFlag(flags []string, name string) bool {
-	for _, f := range flags {
-		if f == name {
-			return true
-		}
-	}
-	return false
-}
-
-func getFlagValue(flags []string, name string) string {
-	prefix := name + "="
-	for _, f := range flags {
-		if len(f) > len(prefix) && f[:len(prefix)] == prefix {
-			return f[len(prefix):]
-		}
-	}
-	return ""
 }

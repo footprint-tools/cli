@@ -7,7 +7,7 @@ import (
 	"github.com/Skryensya/footprint/internal/usage"
 )
 
-func Dispatch(root *DispatchNode, tokens []string, flags []string) (Resolution, error) {
+func Dispatch(root *DispatchNode, tokens []string, flags *ParsedFlags) (Resolution, error) {
 	current := root
 	lastValid := root
 	pathLen := 0
@@ -111,13 +111,8 @@ func Dispatch(root *DispatchNode, tokens []string, flags []string) (Resolution, 
 	}, nil
 }
 
-func hasHelpFlag(flags []string) bool {
-	for _, f := range flags {
-		if f == "--help" || f == "-h" {
-			return true
-		}
-	}
-	return false
+func hasHelpFlag(flags *ParsedFlags) bool {
+	return flags.Has("--help") || flags.Has("-h")
 }
 
 func validFlagsForNode(node *DispatchNode, root *DispatchNode) map[string]bool {
@@ -138,8 +133,8 @@ func validFlagsForNode(node *DispatchNode, root *DispatchNode) map[string]bool {
 	return valid
 }
 
-func validateFlags(flags []string, valid map[string]bool) error {
-	for _, f := range flags {
+func validateFlags(flags *ParsedFlags, valid map[string]bool) error {
+	for _, f := range flags.Raw() {
 		// Extract the flag name (strip value after =)
 		name := f
 		if idx := strings.Index(f, "="); idx != -1 {
