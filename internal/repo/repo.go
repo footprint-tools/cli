@@ -157,3 +157,25 @@ func IsTracked(id RepoID) (bool, error) {
 
 	return false, nil
 }
+
+// ToFilesystemSafe converts a RepoID to a filesystem-safe directory name.
+// Transforms:
+//   - "github.com/user/repo" -> "github.com__user__repo"
+//   - "local:/path/to/repo" -> "local__path__to__repo"
+// The transformation is deterministic and reversible (for display).
+func (id RepoID) ToFilesystemSafe() string {
+	s := string(id)
+
+	// Replace colon (from local: prefix) with double underscore
+	s = strings.ReplaceAll(s, ":", "__")
+
+	// Replace path separators with double underscores
+	s = strings.ReplaceAll(s, "/", "__")
+
+	// Remove leading underscores
+	for len(s) > 0 && s[0] == '_' {
+		s = s[1:]
+	}
+
+	return s
+}
