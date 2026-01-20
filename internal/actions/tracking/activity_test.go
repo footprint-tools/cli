@@ -191,3 +191,137 @@ func mockDepsWithFilterCapture(capturedFilter *store.EventFilter, totalEvents in
 		Pager: func(string) {},
 	}
 }
+
+func TestActivity_FiltersApplied(t *testing.T) {
+	var capturedFilter store.EventFilter
+	deps := mockDepsWithFilterCapture(&capturedFilter, 5)
+
+	flags := dispatchers.NewParsedFlags([]string{
+		"--status=pending",
+		"--source=post-commit",
+		"--repo=test-repo",
+	})
+
+	err := activity([]string{}, flags, deps)
+	if err != nil {
+		t.Fatalf("activity() unexpected error = %v", err)
+	}
+
+	if capturedFilter.Status == nil {
+		t.Error("activity() status filter should be applied")
+	}
+	if capturedFilter.Source == nil {
+		t.Error("activity() source filter should be applied")
+	}
+	if capturedFilter.RepoID == nil || *capturedFilter.RepoID != "test-repo" {
+		t.Error("activity() repo filter should be applied")
+	}
+}
+
+func TestActivity_DateFilters(t *testing.T) {
+	var capturedFilter store.EventFilter
+	deps := mockDepsWithFilterCapture(&capturedFilter, 5)
+
+	flags := dispatchers.NewParsedFlags([]string{
+		"--since=2024-01-01",
+		"--until=2024-12-31",
+	})
+
+	err := activity([]string{}, flags, deps)
+	if err != nil {
+		t.Fatalf("activity() unexpected error = %v", err)
+	}
+
+	if capturedFilter.Since == nil {
+		t.Error("activity() since filter should be applied")
+	}
+	if capturedFilter.Until == nil {
+		t.Error("activity() until filter should be applied")
+	}
+}
+
+func TestActivity_OnelineFlag(t *testing.T) {
+	var pagerOutput string
+	deps := Deps{
+		DBPath: func() string { return ":memory:" },
+		OpenDB: func(path string) (*sql.DB, error) {
+			return sql.Open("sqlite3", path)
+		},
+		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
+			return []store.RepoEvent{
+				{ID: 1, RepoID: "test", Commit: "abc123", Branch: "main", Source: store.SourcePostCommit},
+			}, nil
+		},
+		Pager: func(s string) { pagerOutput = s },
+	}
+
+	flags := dispatchers.NewParsedFlags([]string{"--oneline"})
+	err := activity([]string{}, flags, deps)
+
+	if err != nil {
+		t.Fatalf("activity() unexpected error = %v", err)
+	}
+	if pagerOutput == "" {
+		t.Error("activity() should produce output")
+	}
+}
+
+func TestActivity_DBOpenError(t *testing.T) {
+	deps := Deps{
+		DBPath: func() string { return ":memory:" },
+		OpenDB: func(path string) (*sql.DB, error) {
+			return nil, sql.ErrConnDone
+		},
+	}
+
+	flags := dispatchers.NewParsedFlags([]string{})
+	err := activity([]string{}, flags, deps)
+
+	if err == nil {
+		t.Error("activity() should return error when DB open fails")
+	}
+}
+
+func TestActivity_ListEventsError(t *testing.T) {
+	deps := Deps{
+		DBPath: func() string { return ":memory:" },
+		OpenDB: func(path string) (*sql.DB, error) {
+			return sql.Open("sqlite3", path)
+		},
+		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
+			return nil, sql.ErrNoRows
+		},
+		Pager: func(string) {},
+	}
+
+	flags := dispatchers.NewParsedFlags([]string{})
+	err := activity([]string{}, flags, deps)
+
+	if err == nil {
+		t.Error("activity() should return error when ListEvents fails")
+	}
+}
+
+func TestActivity_EmptyResults(t *testing.T) {
+	pagerCalled := false
+	deps := Deps{
+		DBPath: func() string { return ":memory:" },
+		OpenDB: func(path string) (*sql.DB, error) {
+			return sql.Open("sqlite3", path)
+		},
+		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
+			return []store.RepoEvent{}, nil
+		},
+		Pager: func(string) { pagerCalled = true },
+	}
+
+	flags := dispatchers.NewParsedFlags([]string{})
+	err := activity([]string{}, flags, deps)
+
+	if err != nil {
+		t.Fatalf("activity() unexpected error = %v", err)
+	}
+	if pagerCalled {
+		t.Error("activity() should not call pager when no events")
+	}
+}
