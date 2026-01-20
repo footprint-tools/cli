@@ -15,6 +15,7 @@ import (
 
 var (
 	enabled bool
+	colors  ColorConfig
 
 	// Pre-created styles for performance.
 	// These are only used when enabled is true.
@@ -52,9 +53,15 @@ func Init(enable bool, cfg map[string]string) {
 	enabled = enable
 
 	if enabled {
-		colors := LoadColorConfig(cfg)
+		colors = LoadColorConfig(cfg)
 		initStyles(colors)
 	}
+}
+
+// GetColors returns the current color configuration.
+// Returns empty config if styling is not enabled.
+func GetColors() ColorConfig {
+	return colors
 }
 
 // initStyles creates the lipgloss styles from the given color configuration.

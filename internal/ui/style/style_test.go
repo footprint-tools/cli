@@ -338,6 +338,151 @@ func TestToUpperSnake(t *testing.T) {
 	}
 }
 
+func TestColorFunctions(t *testing.T) {
+	os.Unsetenv("NO_COLOR")
+	os.Unsetenv("FP_NO_COLOR")
+
+	// Initialize with colors enabled
+	Init(true, nil)
+
+	tests := []struct {
+		name string
+		fn   func(string) string
+	}{
+		{"Color1", Color1},
+		{"Color2", Color2},
+		{"Color3", Color3},
+		{"Color4", Color4},
+		{"Color5", Color5},
+		{"Color6", Color6},
+		{"Color7", Color7},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "test"
+			output := tt.fn(input)
+			// Output should contain the input text
+			if !strings.Contains(output, input) {
+				t.Errorf("%s() output %q does not contain input %q", tt.name, output, input)
+			}
+		})
+	}
+}
+
+func TestColorFunctions_Disabled(t *testing.T) {
+	os.Unsetenv("NO_COLOR")
+	os.Unsetenv("FP_NO_COLOR")
+
+	// Initialize with colors disabled
+	Init(false, nil)
+
+	tests := []struct {
+		name string
+		fn   func(string) string
+	}{
+		{"Color1", Color1},
+		{"Color2", Color2},
+		{"Color3", Color3},
+		{"Color4", Color4},
+		{"Color5", Color5},
+		{"Color6", Color6},
+		{"Color7", Color7},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "test"
+			output := tt.fn(input)
+			// When disabled, output should equal input
+			if output != input {
+				t.Errorf("%s() with disabled styling: got %q, want %q", tt.name, output, input)
+			}
+		})
+	}
+}
+
+func TestSetColorField_AllFields(t *testing.T) {
+	clearColorEnvVars(t)
+
+	cfg := map[string]string{
+		"color_success": "100",
+		"color_warning": "101",
+		"color_error":   "102",
+		"color_info":    "103",
+		"color_muted":   "104",
+		"color_header":  "bold",
+		"color_1":       "200",
+		"color_2":       "201",
+		"color_3":       "202",
+		"color_4":       "203",
+		"color_5":       "204",
+		"color_6":       "205",
+		"color_7":       "206",
+	}
+
+	colors := LoadColorConfig(cfg)
+
+	if colors.Success != "100" {
+		t.Errorf("Success: got %q, want %q", colors.Success, "100")
+	}
+	if colors.Warning != "101" {
+		t.Errorf("Warning: got %q, want %q", colors.Warning, "101")
+	}
+	if colors.Error != "102" {
+		t.Errorf("Error: got %q, want %q", colors.Error, "102")
+	}
+	if colors.Info != "103" {
+		t.Errorf("Info: got %q, want %q", colors.Info, "103")
+	}
+	if colors.Muted != "104" {
+		t.Errorf("Muted: got %q, want %q", colors.Muted, "104")
+	}
+	if colors.Header != "bold" {
+		t.Errorf("Header: got %q, want %q", colors.Header, "bold")
+	}
+	if colors.Color7 != "206" {
+		t.Errorf("Color7: got %q, want %q", colors.Color7, "206")
+	}
+}
+
+func TestResolveThemeName_Light(t *testing.T) {
+	clearColorEnvVars(t)
+
+	// Test with explicit light theme
+	name := ResolveThemeName("default-light")
+	if name != "default-light" {
+		t.Errorf("ResolveThemeName: got %q, want %q", name, "default-light")
+	}
+}
+
+func TestResolveThemeName_Dark(t *testing.T) {
+	clearColorEnvVars(t)
+
+	// Test with explicit dark theme
+	name := ResolveThemeName("default-dark")
+	if name != "default-dark" {
+		t.Errorf("ResolveThemeName: got %q, want %q", name, "default-dark")
+	}
+}
+
+func TestResolveThemeName_NoSuffix(t *testing.T) {
+	clearColorEnvVars(t)
+
+	// Test without suffix - it will auto-detect
+	name := ResolveThemeName("default")
+	// Should have either -dark or -light suffix appended
+	if name != "default-dark" && name != "default-light" {
+		t.Errorf("ResolveThemeName: got %q, want either %q or %q", name, "default-dark", "default-light")
+	}
+}
+
+func TestIsDarkBackground(t *testing.T) {
+	// Just ensure it doesn't panic and returns a boolean
+	result := IsDarkBackground()
+	_ = result // Result depends on terminal environment
+}
+
 // clearColorEnvVars clears all FP_COLOR_* environment variables for test isolation.
 func clearColorEnvVars(t *testing.T) {
 	t.Helper()

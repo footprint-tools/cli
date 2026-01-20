@@ -25,7 +25,19 @@ type ColorConfig struct {
 	Color7  string // MANUAL
 }
 
-// ThemeNames lists available themes in display order.
+// BaseThemeNames lists available theme bases (auto-detects dark/light).
+var BaseThemeNames = []string{
+	"default",
+	"neon",
+	"aurora",
+	"mono",
+	"ocean",
+	"sunset",
+	"candy",
+	"contrast",
+}
+
+// ThemeNames lists all themes with explicit dark/light variants.
 var ThemeNames = []string{
 	"default-dark", "default-light",
 	"neon-dark", "neon-light",
