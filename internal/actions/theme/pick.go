@@ -1,12 +1,15 @@
 package theme
 
 import (
+	"errors"
+	"os"
 	"strings"
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
 //
@@ -22,15 +25,20 @@ func Pick(args []string, flags *dispatchers.ParsedFlags) error {
 //
 
 func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
-	current, _ := deps.Get("color_theme")
-	if current == "" {
-		current = style.ResolveThemeName("default")
+	// Hard guard: Bubble Tea REQUIRES a real terminal
+	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
+		return errors.New("theme picker requires an interactive terminal")
 	}
 
-	currentIdx := 0
+	current, _ := deps.Get("color_theme")
+	if current == "" {
+		current = "default-dark"
+	}
+
+	cursor := 0
 	for i, name := range deps.ThemeNames {
 		if name == current {
-			currentIdx = i
+			cursor = i
 			break
 		}
 	}
@@ -38,35 +46,41 @@ func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	m := model{
 		themes:   deps.ThemeNames,
 		configs:  deps.Themes,
-		cursor:   currentIdx,
+		cursor:   cursor,
 		selected: current,
-		deps:     deps,
 	}
 
-	p := tea.NewProgram(m)
-	finalModel, err := p.Run()
+	p := tea.NewProgram(
+		m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(), // harmless, but stabilizes input
+	)
+
+	final, err := p.Run()
 	if err != nil {
 		return err
 	}
 
-	fm := finalModel.(model)
+	fm := final.(model)
 
-	if fm.chosen != "" && fm.chosen != current {
+	if fm.chosen != "" {
+		if fm.chosen == current {
+			deps.Printf("\nTheme %s is already active\n", style.Info(fm.chosen))
+			return nil
+		}
 		lines, err := deps.ReadLines()
 		if err != nil {
 			return err
 		}
-
 		lines, _ = deps.Set(lines, "color_theme", fm.chosen)
 		if err := deps.WriteLines(lines); err != nil {
 			return err
 		}
-
 		deps.Printf("\nTheme set to %s\n", style.Success(fm.chosen))
 		return nil
 	}
 
-	if fm.chosen == "" {
+	if fm.cancelled {
 		deps.Println("\nCancelled")
 	}
 
@@ -78,12 +92,12 @@ func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 //
 
 type model struct {
-	themes   []string
-	configs  map[string]style.ColorConfig
-	cursor   int
-	selected string
-	chosen   string
-	deps     Deps
+	themes    []string
+	configs   map[string]style.ColorConfig
+	cursor    int
+	selected  string
+	chosen    string
+	cancelled bool
 }
 
 //
@@ -98,28 +112,58 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch msg.Type {
 
-		case "ctrl+c", "q", "esc":
+		case tea.KeyCtrlC, tea.KeyEsc:
+			m.cancelled = true
 			return m, tea.Quit
 
-		case "up", "k":
+		case tea.KeyUp:
 			if m.cursor > 0 {
 				m.cursor--
 			} else {
-				m.cursor = len(m.themes) - 1 // wrap to end
+				m.cursor = len(m.themes) - 1
 			}
 
-		case "down", "j":
+		case tea.KeyDown:
 			if m.cursor < len(m.themes)-1 {
 				m.cursor++
 			} else {
-				m.cursor = 0 // wrap to start
+				m.cursor = 0
 			}
 
-		case "enter", " ":
+		case tea.KeyHome:
+			m.cursor = 0
+
+		case tea.KeyEnd:
+			m.cursor = len(m.themes) - 1
+
+		case tea.KeyEnter, tea.KeySpace:
 			m.chosen = m.themes[m.cursor]
 			return m, tea.Quit
+
+		case tea.KeyRunes:
+			switch string(msg.Runes) {
+			case "q":
+				m.cancelled = true
+				return m, tea.Quit
+			case "j":
+				if m.cursor < len(m.themes)-1 {
+					m.cursor++
+				} else {
+					m.cursor = 0
+				}
+			case "k":
+				if m.cursor > 0 {
+					m.cursor--
+				} else {
+					m.cursor = len(m.themes) - 1
+				}
+			case "g":
+				m.cursor = 0
+			case "G":
+				m.cursor = len(m.themes) - 1
+			}
 		}
 	}
 
@@ -135,170 +179,136 @@ func (m model) View() string {
 
 	b.WriteString("Select a theme:\n\n")
 
+	// Left column
+	left := make([]string, len(m.themes))
 	for i, name := range m.themes {
-		cfg := m.configs[name]
-
-		// Cursor
 		cursor := "   "
 		if i == m.cursor {
-			cursor = " ▸ "
+			cursor = " → "
 		}
 
-		// Current marker
-		marker := "  "
+		selected := "  "
 		if name == m.selected {
-			marker = "* "
+			selected = "✓ "
 		}
 
-		// Theme name: fixed visible width (Lipgloss handles ANSI safely)
-		nameStyle := lipgloss.NewStyle().Width(14)
+		styleName := lipgloss.NewStyle().Width(14)
 		if i == m.cursor {
-			nameStyle = nameStyle.Bold(true)
+			styleName = styleName.Bold(true).Background(lipgloss.Color("237"))
 		}
-		themeName := nameStyle.Render(name)
 
-		// Color preview (fixed width segments)
-		preview := renderPickerPreview(cfg)
-
-		b.WriteString(cursor)
-		b.WriteString(marker)
-		b.WriteString(themeName)
-		b.WriteString("  ")
-		b.WriteString(preview)
-		b.WriteString("\n")
+		left[i] = cursor + selected + styleName.Render(name)
 	}
 
-	b.WriteString("\n")
+	// Right column (preview)
+	themeName := m.themes[m.cursor]
+	cfg := m.configs[themeName]
 
-	cfg := m.configs[m.themes[m.cursor]]
-	b.WriteString(renderThemeDetails(m.themes[m.cursor], cfg))
-
-	b.WriteString("\n")
-	b.WriteString(
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			Render("▲ ▼ move   enter select   q cancel"),
+	right := renderPreviewCard(
+		buildThemeDetailsLines(themeName, cfg),
 	)
+
+	b.WriteString(
+		lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			strings.Join(left, "\n"),
+			"    ",
+			right,
+		),
+	)
+
+	b.WriteString("\n\n")
+	b.WriteString(renderFooter())
 
 	return b.String()
 }
 
-//
-// Rendering helpers
-//
+func renderFooter() string {
+	key := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252")).
+		Background(lipgloss.Color("238")).
+		Padding(0, 1)
 
-func renderPickerPreview(cfg style.ColorConfig) string {
-	// Nota: dejamos 1 espacio explícito entre columnas para legibilidad.
-	return colorize("success", 8, cfg.Success) + " " +
-		colorize("warning", 8, cfg.Warning) + " " +
-		colorize("error", 6, cfg.Error) + " " +
-		colorize("info", 5, cfg.Info) + " " +
-		colorize("muted", 5, cfg.Muted)
+	sep := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("238")).
+		Render(" │ ")
+
+	label := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("245"))
+
+	return key.Render("↑↓") + label.Render(" move") + sep +
+		key.Render("g/G") + label.Render(" jump") + sep +
+		key.Render("enter") + label.Render(" select") + sep +
+		key.Render("q") + label.Render(" cancel")
 }
 
-func renderThemeDetails(name string, cfg style.ColorConfig) string {
+//
+// Preview rendering
+//
+
+func renderPreviewCard(lines []string) string {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(0, 1).
+		Render(strings.Join(lines, "\n"))
+}
+
+func buildThemeDetailsLines(name string, cfg style.ColorConfig) []string {
 	muted := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	label := lipgloss.NewStyle().Width(14).Align(lipgloss.Left)
 
-	source := func(text string, color string) string {
+	color := func(label, c string) string {
+		if c == "" {
+			return label
+		}
+		if c == "bold" {
+			return lipgloss.NewStyle().Bold(true).Render(label)
+		}
 		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(c)).
+			Render(label)
+	}
+
+	source := func(label, c string) string {
+		s := lipgloss.NewStyle().
 			Width(18).
-			Align(lipgloss.Left).
-			Foreground(lipgloss.Color(color)).
-			Render(text)
+			Align(lipgloss.Left)
+		if c != "" {
+			s = s.Foreground(lipgloss.Color(c))
+		}
+		return s.Render(label)
 	}
 
-	var b strings.Builder
+	var lines []string
 
-	b.WriteString(muted.Render("Preview: "))
-	b.WriteString(
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(cfg.Info)).
-			Render(name),
+	lines = append(
+		lines,
+		muted.Render("Preview: ")+
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color(cfg.Info)).
+				Render(name),
 	)
-	b.WriteString("\n\n")
 
-	// UI roles
-	b.WriteString("  ")
-	b.WriteString(label.Render("success"))
-	b.WriteString(colorize("confirmations", 18, cfg.Success))
-	b.WriteString("\n")
+	lines = append(
+		lines,
+		color("success", cfg.Success)+"  "+
+			color("warning", cfg.Warning)+"  "+
+			color("error", cfg.Error)+"  "+
+			color("info", cfg.Info)+"  "+
+			color("muted", cfg.Muted)+"  "+
+			color("header", cfg.Header),
+	)
 
-	b.WriteString("  ")
-	b.WriteString(label.Render("warning"))
-	b.WriteString(colorize("cautionary messages", 19, cfg.Warning))
-	b.WriteString("\n")
+	lines = append(lines, "")
+	lines = append(lines, muted.Render("Sources:"))
 
-	b.WriteString("  ")
-	b.WriteString(label.Render("error"))
-	b.WriteString(colorize("error messages", 18, cfg.Error))
-	b.WriteString("\n")
+	lines = append(lines, source("POST-COMMIT", cfg.Color1))
+	lines = append(lines, source("POST-REWRITE", cfg.Color2))
+	lines = append(lines, source("POST-CHECKOUT", cfg.Color3))
+	lines = append(lines, source("POST-MERGE", cfg.Color4))
+	lines = append(lines, source("PRE-PUSH", cfg.Color5))
+	lines = append(lines, source("BACKFILL", cfg.Color6))
+	lines = append(lines, source("MANUAL", cfg.Color7))
 
-	b.WriteString("  ")
-	b.WriteString(label.Render("info"))
-	b.WriteString(colorize("highlights", 18, cfg.Info))
-	b.WriteString("\n")
-
-	b.WriteString("  ")
-	b.WriteString(label.Render("muted"))
-	b.WriteString(colorize("secondary text", 18, cfg.Muted))
-	b.WriteString("\n")
-
-	b.WriteString("  ")
-	b.WriteString(label.Render("header"))
-	b.WriteString(colorize("commit hashes", 18, cfg.Header))
-	b.WriteString("\n\n")
-
-	// Sources (canonical, aligned list)
-	b.WriteString("  ")
-	b.WriteString(muted.Render("Sources:"))
-	b.WriteString("\n")
-
-	// IMPORTANT: same prefix for every row
-	const srcIndent = "    "
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("POST-COMMIT", cfg.Color1))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("POST-REWRITE", cfg.Color2))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("POST-CHECKOUT", cfg.Color3))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("POST-MERGE", cfg.Color4))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("PRE-PUSH", cfg.Color5))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("BACKFILL", cfg.Color6))
-	b.WriteString("\n")
-
-	b.WriteString(srcIndent)
-	b.WriteString(source("MANUAL", cfg.Color7))
-
-	return b.String()
-}
-
-//
-// Tiny helpers
-//
-
-func colorize(text string, width int, color string) string {
-	st := lipgloss.NewStyle().Width(width)
-
-	if color == "bold" {
-		st = st.Bold(true)
-	} else {
-		st = st.Foreground(lipgloss.Color(color))
-	}
-
-	return st.Render(text)
+	return lines
 }

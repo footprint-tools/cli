@@ -1,11 +1,9 @@
 package theme
 
 import (
-	"fmt"
-
-	"github.com/charmbracelet/lipgloss"
 	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/ui/style"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func List(args []string, flags *dispatchers.ParsedFlags) error {
@@ -17,6 +15,8 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if current == "" {
 		current = style.ResolveThemeName("default")
 	}
+
+	deps.Println("Available themes (* = current)\n")
 
 	for _, name := range deps.ThemeNames {
 		marker := "  "
@@ -30,23 +30,30 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		deps.Printf("%s%-14s  %s\n", marker, name, preview)
 	}
 
-	deps.Println("\nUse 'fp theme set <name>' to change, 'fp theme show' for details")
+	deps.Println("\nUse 'fp theme set <name>' or 'fp theme pick' to change")
 
 	return nil
 }
 
 // renderColorPreview returns colored text samples for a theme.
 func renderColorPreview(cfg style.ColorConfig) string {
-	colorize := func(text string, width int, color string) string {
-		padded := fmt.Sprintf("%-*s", width, text)
-		if color == "bold" {
-			return lipgloss.NewStyle().Bold(true).Render(padded)
+	colorize := func(text, color string) string {
+		if color == "" || color == "bold" {
+			return lipgloss.NewStyle().Bold(true).Render(text)
 		}
-		return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(padded)
+		return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(text)
 	}
 
-	return colorize("success", 9, cfg.Success) +
-		colorize("error", 7, cfg.Error) +
-		colorize("info", 6, cfg.Info) +
-		colorize("muted", 5, cfg.Muted)
+	return colorize("success ", cfg.Success) +
+		colorize("error ", cfg.Error) +
+		colorize("info ", cfg.Info) +
+		colorize("muted", cfg.Muted) +
+		"   " +
+		colorize("POST-COMMIT ", cfg.Color1) +
+		colorize("POST-REWRITE ", cfg.Color2) +
+		colorize("POST-CHECKOUT ", cfg.Color3) +
+		colorize("POST-MERGE ", cfg.Color4) +
+		colorize("PRE-PUSH ", cfg.Color5) +
+		colorize("BACKFILL ", cfg.Color6) +
+		colorize("MANUAL", cfg.Color7)
 }

@@ -28,7 +28,7 @@ func DefaultDeps() Deps {
 		GetAll:     config.GetAll,
 		Printf:     fmt.Printf,
 		Println:    fmt.Println,
-		ThemeNames: style.ThemeNames,
+		ThemeNames: style.ThemeNames, // All variants (dark/light) explicitly
 		Themes:     style.Themes,
 	}
 }
