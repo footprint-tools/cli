@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	helpactions "github.com/Skryensya/footprint/internal/actions/help"
 	"github.com/Skryensya/footprint/internal/cli"
 	"github.com/Skryensya/footprint/internal/config"
 	"github.com/Skryensya/footprint/internal/dispatchers"
@@ -41,6 +42,9 @@ func main() {
 	if pager := flags.String("--pager", ""); pager != "" {
 		ui.SetPager(pager)
 	}
+
+	// Set BuildTree function for help browser (avoids import cycle)
+	helpactions.SetBuildTreeFunc(cli.BuildTree)
 
 	root := cli.BuildTree()
 
