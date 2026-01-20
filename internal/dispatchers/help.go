@@ -18,12 +18,15 @@ var commandDisplayOrder = map[string]int{
 	"setup": 1,
 	"track": 2,
 	// inspect activity and state
-	"activity": 1,
-	"status":   2,
-	"repos":    3,
-	"list":     4,
-	"check":    5,
-	"version":  6,
+	"activity":     1,
+	"watch":        2,
+	"status":       3,
+	"repos":        4,
+	"list":         5,
+	"check":        6,
+	"version":      7,
+	"logs":         8,
+	"help-browser": 9,
 	// manage tracked repositories
 	"untrack":     1,
 	"sync-remote": 2,
@@ -33,6 +36,10 @@ var commandDisplayOrder = map[string]int{
 	"config set":   2,
 	"config unset": 3,
 	"config list":  4,
+	// theme commands
+	"theme list": 1,
+	"theme set":  2,
+	"theme pick": 3,
 }
 
 // formatUsage styles the usage line with the command in Info color and the rest muted.
@@ -167,6 +174,19 @@ func HelpAction(node *DispatchNode, root *DispatchNode) CommandFunc {
 				}
 
 				sort.Slice(children, func(i, j int) bool {
+					pathI := strings.Join(children[i].Path[1:], " ")
+					pathJ := strings.Join(children[j].Path[1:], " ")
+					orderI, hasI := commandDisplayOrder[pathI]
+					orderJ, hasJ := commandDisplayOrder[pathJ]
+					if hasI && hasJ {
+						return orderI < orderJ
+					}
+					if hasI {
+						return true
+					}
+					if hasJ {
+						return false
+					}
 					return children[i].Name < children[j].Name
 				})
 
