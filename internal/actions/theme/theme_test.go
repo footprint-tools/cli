@@ -263,23 +263,32 @@ func TestModel_Init(t *testing.T) {
 func TestModel_View(t *testing.T) {
 	m := model{
 		themes:   []string{"default-dark", "default-light"},
-		configs:  map[string]style.ColorConfig{"default-dark": {Success: "10"}, "default-light": {Success: "28"}},
+		configs:  map[string]style.ColorConfig{"default-dark": {Success: "10", Info: "14", Muted: "245", UIActive: "14", UIDim: "240"}, "default-light": {Success: "28", Info: "27", Muted: "243", UIActive: "27", UIDim: "252"}},
 		cursor:   0,
 		selected: "default-dark",
+		width:    100,
+		height:   30,
 	}
 
 	output := m.View()
 
-	require.Contains(t, output, "Select a theme")
+	require.Contains(t, output, "fp theme pick")
 	require.Contains(t, output, "default-dark")
 }
 
 func TestRenderFooter(t *testing.T) {
-	output := renderFooter()
+	m := model{
+		themes:  []string{"test-theme"},
+		configs: map[string]style.ColorConfig{"test-theme": {Info: "14", Muted: "245", UIDim: "240"}},
+		cursor:  0,
+		width:   80,
+		height:  24,
+	}
+	output := m.renderFooter()
 
-	require.Contains(t, output, "move")
+	require.Contains(t, output, "switch")
 	require.Contains(t, output, "select")
-	require.Contains(t, output, "cancel")
+	require.Contains(t, output, "quit")
 }
 
 func TestRenderPreviewCard(t *testing.T) {
@@ -365,9 +374,10 @@ func TestModel_Update_Esc(t *testing.T) {
 
 func TestModel_Update_ArrowDown(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  0,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       0,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyDown}
@@ -379,9 +389,10 @@ func TestModel_Update_ArrowDown(t *testing.T) {
 
 func TestModel_Update_ArrowDown_Wrap(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
-		cursor:  1, // At last item
+		themes:       []string{"theme1", "theme2"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
+		cursor:       1, // At last item
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyDown}
@@ -393,9 +404,10 @@ func TestModel_Update_ArrowDown_Wrap(t *testing.T) {
 
 func TestModel_Update_ArrowUp(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  1,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       1,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyUp}
@@ -407,9 +419,10 @@ func TestModel_Update_ArrowUp(t *testing.T) {
 
 func TestModel_Update_ArrowUp_Wrap(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
-		cursor:  0, // At first item
+		themes:       []string{"theme1", "theme2"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
+		cursor:       0, // At first item
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyUp}
@@ -421,9 +434,10 @@ func TestModel_Update_ArrowUp_Wrap(t *testing.T) {
 
 func TestModel_Update_Home(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  2,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       2,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyHome}
@@ -435,9 +449,10 @@ func TestModel_Update_Home(t *testing.T) {
 
 func TestModel_Update_End(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  0,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       0,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyEnd}
@@ -494,9 +509,10 @@ func TestModel_Update_Q(t *testing.T) {
 
 func TestModel_Update_J(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  0,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       0,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -508,9 +524,10 @@ func TestModel_Update_J(t *testing.T) {
 
 func TestModel_Update_J_Wrap(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
-		cursor:  1, // At last item
+		themes:       []string{"theme1", "theme2"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
+		cursor:       1, // At last item
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
@@ -522,9 +539,10 @@ func TestModel_Update_J_Wrap(t *testing.T) {
 
 func TestModel_Update_K(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  1,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       1,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}}
@@ -536,9 +554,10 @@ func TestModel_Update_K(t *testing.T) {
 
 func TestModel_Update_K_Wrap(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
-		cursor:  0, // At first item
+		themes:       []string{"theme1", "theme2"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}},
+		cursor:       0, // At first item
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}}
@@ -550,9 +569,10 @@ func TestModel_Update_K_Wrap(t *testing.T) {
 
 func TestModel_Update_g(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  2,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       2,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
@@ -564,9 +584,10 @@ func TestModel_Update_g(t *testing.T) {
 
 func TestModel_Update_G(t *testing.T) {
 	m := model{
-		themes:  []string{"theme1", "theme2", "theme3"},
-		configs: map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
-		cursor:  0,
+		themes:       []string{"theme1", "theme2", "theme3"},
+		configs:      map[string]style.ColorConfig{"theme1": {}, "theme2": {}, "theme3": {}},
+		cursor:       0,
+		focusSidebar: true,
 	}
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}}

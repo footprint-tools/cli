@@ -55,5 +55,8 @@ func renderColorPreview(cfg style.ColorConfig) string {
 		colorize("POST-MERGE ", cfg.Color4) +
 		colorize("PRE-PUSH ", cfg.Color5) +
 		colorize("BACKFILL ", cfg.Color6) +
-		colorize("MANUAL", cfg.Color7)
+		colorize("MANUAL", cfg.Color7) +
+		"   " +
+		colorize("UI-active ", cfg.UIActive) +
+		colorize("UI-dim", cfg.UIDim)
 }
