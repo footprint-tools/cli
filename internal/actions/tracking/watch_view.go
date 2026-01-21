@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Skryensya/footprint/internal/store"
+	"github.com/Skryensya/footprint/internal/ui/splitpanel"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -21,9 +22,33 @@ func (m watchModel) View() string {
 	footerHeight := 2
 	mainHeight := m.height - headerHeight - footerHeight
 
+	// Create layout with drawer support
+	cfg := splitpanel.Config{
+		SidebarWidthPercent: 0.20,
+		SidebarMinWidth:     18,
+		SidebarMaxWidth:     24,
+		HasDrawer:           true,
+		DrawerWidthPercent:  0.35,
+	}
+	layout := splitpanel.NewLayout(m.width, cfg, m.colors)
+	layout.SetFocus(false) // Stats sidebar is never focused
+	layout.SetDrawerOpen(m.drawerOpen)
+
+	// Build panels
+	statsPanel := m.buildStatsPanel(layout, mainHeight)
+	eventsPanel := m.buildEventsPanel(layout, mainHeight)
+
 	// Render components
 	header := m.renderHeader()
-	main := m.renderMain(mainHeight)
+
+	var main string
+	if m.drawerOpen {
+		drawerPanel := m.buildDrawerPanel(layout, mainHeight)
+		main = layout.RenderWithDrawer(statsPanel, eventsPanel, &drawerPanel, mainHeight)
+	} else {
+		main = layout.Render(statsPanel, eventsPanel, mainHeight)
+	}
+
 	footer := m.renderFooter()
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, main, footer)
@@ -33,7 +58,6 @@ func (m watchModel) renderHeader() string {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
 	warnColor := lipgloss.Color(colors.Warning)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(infoColor)
@@ -68,33 +92,16 @@ func (m watchModel) renderHeader() string {
 
 	headerStyle := lipgloss.NewStyle().
 		Width(m.width).
-		BorderBottom(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
 		Padding(0, 1)
 
 	return headerStyle.Render(headerContent)
 }
 
-func (m watchModel) renderMain(height int) string {
-	statsWidth, eventsWidth, drawerWidth := m.calculateWidths()
 
-	stats := m.renderStats(statsWidth, height)
-	events := m.renderEvents(eventsWidth, height)
-
-	if m.drawerOpen && drawerWidth > 0 {
-		drawer := m.renderDrawer(drawerWidth, height)
-		return lipgloss.JoinHorizontal(lipgloss.Top, stats, events, drawer)
-	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, stats, events)
-}
-
-func (m watchModel) renderStats(width, height int) string {
+func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
 	successColor := lipgloss.Color(colors.Success)
 
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(successColor)
@@ -158,13 +165,9 @@ func (m watchModel) renderStats(width, height int) string {
 		})
 
 		// Show top repos (limit to fit)
-		maxRepos := (height - 12) / 1
-		if maxRepos < 3 {
-			maxRepos = 3
-		}
-		if maxRepos > len(repos) {
-			maxRepos = len(repos)
-		}
+		width := layout.SidebarContentWidth()
+		maxRepos := max((height-12)/1, 3)
+		maxRepos = min(maxRepos, len(repos))
 
 		for i := 0; i < maxRepos; i++ {
 			r := repos[i]
@@ -177,37 +180,19 @@ func (m watchModel) renderStats(width, height int) string {
 		}
 	}
 
-	// Pad to height
-	contentHeight := height - 2 // for padding
-	for len(lines) < contentHeight {
-		lines = append(lines, "")
+	return splitpanel.Panel{
+		Lines:      lines,
+		ScrollPos:  0,
+		TotalItems: len(lines),
 	}
-	if len(lines) > contentHeight {
-		lines = lines[:contentHeight]
-	}
-
-	content := strings.Join(lines, "\n")
-
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		BorderRight(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1)
-
-	return style.Render(content)
 }
 
-func (m watchModel) renderEvents(width, height int) string {
+func (m *watchModel) buildEventsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
-	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
-	warnColor := lipgloss.Color(colors.Warning)
 
 	filtered := m.filteredEvents()
-	visibleHeight := height - 2 // padding
+	visibleHeight := height - 2 // Account for panel border
 
 	// Adjust scroll to keep cursor visible
 	scrollOffset := m.eventScroll
@@ -219,6 +204,7 @@ func (m watchModel) renderEvents(width, height int) string {
 	}
 
 	var lines []string
+	width := layout.MainContentWidth()
 
 	if len(filtered) == 0 {
 		emptyStyle := lipgloss.NewStyle().Foreground(mutedColor).Italic(true)
@@ -230,34 +216,16 @@ func (m watchModel) renderEvents(width, height int) string {
 	} else {
 		for i := scrollOffset; i < len(filtered) && len(lines) < visibleHeight; i++ {
 			event := filtered[i]
-			line := m.formatEventLine(event, width-4, i == m.cursor)
+			line := m.formatEventLine(event, width, i == m.cursor)
 			lines = append(lines, line)
 		}
 	}
 
-	// Pad to height
-	for len(lines) < visibleHeight {
-		lines = append(lines, "")
+	return splitpanel.Panel{
+		Lines:      lines,
+		ScrollPos:  scrollOffset,
+		TotalItems: len(filtered),
 	}
-
-	content := strings.Join(lines, "\n")
-
-	// Border color based on focus (if drawer is open, events panel is not focused)
-	panelBorderColor := borderColor
-	if !m.drawerOpen {
-		panelBorderColor = infoColor
-	}
-	_ = warnColor // unused for now
-
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		BorderRight(m.drawerOpen).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(panelBorderColor).
-		Padding(0, 1)
-
-	return style.Render(content)
 }
 
 func (m watchModel) formatEventLine(event store.RepoEvent, width int, selected bool) string {
@@ -316,11 +284,10 @@ func (m watchModel) formatEventLine(event store.RepoEvent, width int, selected b
 	return style.Render(line)
 }
 
-func (m watchModel) renderDrawer(width, height int) string {
+func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
 	successColor := lipgloss.Color(colors.Success)
 
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(successColor)
@@ -328,6 +295,7 @@ func (m watchModel) renderDrawer(width, height int) string {
 	valueStyle := lipgloss.NewStyle().Foreground(infoColor)
 
 	var lines []string
+	width := layout.DrawerContentWidth()
 
 	if m.drawerDetail == nil {
 		lines = append(lines, labelStyle.Render("No event selected"))
@@ -341,7 +309,11 @@ func (m watchModel) renderDrawer(width, height int) string {
 
 		// Type and commit
 		lines = append(lines, labelStyle.Render("Type: ")+valueStyle.Render("commit"))
-		lines = append(lines, labelStyle.Render("Commit: ")+valueStyle.Render(meta.CommitShort))
+		commitShort := event.Commit
+		if len(commitShort) > 10 {
+			commitShort = commitShort[:10]
+		}
+		lines = append(lines, labelStyle.Render("Commit: ")+valueStyle.Render(commitShort))
 		lines = append(lines, "")
 
 		// Repository
@@ -354,9 +326,13 @@ func (m watchModel) renderDrawer(width, height int) string {
 		lines = append(lines, labelStyle.Render("Branch: ")+valueStyle.Render(event.Branch))
 		lines = append(lines, "")
 
-		// Timestamp
-		lines = append(lines, labelStyle.Render("Time:"))
-		lines = append(lines, valueStyle.Render("  "+event.Timestamp.Format("2006-01-02 15:04:05")))
+		// Timestamps
+		lines = append(lines, headerStyle.Render("TIMESTAMPS"))
+		lines = append(lines, "")
+		if meta.AuthoredAt != "" {
+			lines = append(lines, labelStyle.Render("  Authored: ")+valueStyle.Render(meta.AuthoredAt))
+		}
+		lines = append(lines, labelStyle.Render("  Recorded: ")+valueStyle.Render(event.Timestamp.Format("2006-01-02 15:04:05")))
 		lines = append(lines, "")
 
 		// Author
@@ -366,6 +342,17 @@ func (m watchModel) renderDrawer(width, height int) string {
 			lines = append(lines, valueStyle.Render("  "+meta.AuthorName))
 			if meta.AuthorEmail != "" {
 				lines = append(lines, labelStyle.Render("  "+meta.AuthorEmail))
+			}
+			lines = append(lines, "")
+		}
+
+		// Committer (only show if different from author)
+		if meta.CommitterName != "" && (meta.CommitterName != meta.AuthorName || meta.CommitterEmail != meta.AuthorEmail) {
+			lines = append(lines, headerStyle.Render("COMMITTER"))
+			lines = append(lines, "")
+			lines = append(lines, valueStyle.Render("  "+meta.CommitterName))
+			if meta.CommitterEmail != "" {
+				lines = append(lines, labelStyle.Render("  "+meta.CommitterEmail))
 			}
 			lines = append(lines, "")
 		}
@@ -403,33 +390,29 @@ func (m watchModel) renderDrawer(width, height int) string {
 		lines = append(lines, "")
 		lines = append(lines, valueStyle.Render("  "+event.Status.String()))
 
-		// Is merge?
-		if meta.IsMerge {
-			lines = append(lines, "")
-			lines = append(lines, labelStyle.Render("  (merge commit)"))
+		// Parents (shows for merges)
+		if meta.ParentCommits != "" {
+			isMerge := strings.Contains(meta.ParentCommits, " ")
+			if isMerge {
+				lines = append(lines, "")
+				lines = append(lines, headerStyle.Render("MERGE"))
+				lines = append(lines, "")
+				parents := strings.Split(meta.ParentCommits, " ")
+				for i, parent := range parents {
+					if len(parent) > 10 {
+						parent = parent[:10]
+					}
+					lines = append(lines, labelStyle.Render(fmt.Sprintf("  Parent %d: ", i+1))+valueStyle.Render(parent))
+				}
+			}
 		}
 	}
 
-	// Pad to height
-	contentHeight := height - 2
-	for len(lines) < contentHeight {
-		lines = append(lines, "")
+	return splitpanel.Panel{
+		Lines:      lines,
+		ScrollPos:  0,
+		TotalItems: len(lines),
 	}
-	if len(lines) > contentHeight {
-		lines = lines[:contentHeight]
-	}
-
-	content := strings.Join(lines, "\n")
-
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		BorderLeft(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1)
-
-	return style.Render(content)
 }
 
 func (m watchModel) renderFooter() string {
@@ -463,9 +446,6 @@ func (m watchModel) renderFooter() string {
 
 	footerStyle := lipgloss.NewStyle().
 		Width(m.width).
-		BorderTop(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
 		Padding(0, 1)
 
 	return footerStyle.Render(footer)
