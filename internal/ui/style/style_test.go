@@ -483,6 +483,23 @@ func TestIsDarkBackground(t *testing.T) {
 	_ = result // Result depends on terminal environment
 }
 
+func TestGetColors(t *testing.T) {
+	clearColorEnvVars(t)
+
+	// Initialize with colors
+	Init(true, nil)
+
+	colors := GetColors()
+
+	// Should return a valid config (not empty)
+	if colors.Success == "" {
+		t.Error("GetColors().Success should not be empty after Init")
+	}
+	if colors.Error == "" {
+		t.Error("GetColors().Error should not be empty after Init")
+	}
+}
+
 // clearColorEnvVars clears all FP_COLOR_* environment variables for test isolation.
 func clearColorEnvVars(t *testing.T) {
 	t.Helper()

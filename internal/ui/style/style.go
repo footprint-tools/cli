@@ -25,6 +25,7 @@ var (
 	infoStyle    lipgloss.Style
 	headerStyle  lipgloss.Style
 	mutedStyle   lipgloss.Style
+	borderStyle  lipgloss.Style
 	color1Style  lipgloss.Style
 	color2Style  lipgloss.Style
 	color3Style  lipgloss.Style
@@ -77,6 +78,7 @@ func initStyles(colors ColorConfig) {
 	infoStyle = makeStyle(colors.Info)
 	mutedStyle = makeStyle(colors.Muted)
 	headerStyle = makeStyle(colors.Header)
+	borderStyle = makeStyle(colors.Border)
 	color1Style = makeStyle(colors.Color1)
 	color2Style = makeStyle(colors.Color2)
 	color3Style = makeStyle(colors.Color3)
@@ -146,6 +148,14 @@ func Muted(text string) string {
 		return text
 	}
 	return mutedStyle.Render(text)
+}
+
+// Border styles text for interactive delimiters (scrollbars, card borders, etc.).
+func Border(text string) string {
+	if !enabled {
+		return text
+	}
+	return borderStyle.Render(text)
 }
 
 // Color1 through Color7 are neutral colors for visual distinction only.

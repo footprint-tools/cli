@@ -16,6 +16,7 @@ type ColorConfig struct {
 	Info    string
 	Muted   string
 	Header  string
+	Border  string // Interactive delimiters (scrollbars, card borders, etc.)
 	Color1  string // POST-COMMIT
 	Color2  string // POST-REWRITE
 	Color3  string // POST-CHECKOUT
@@ -62,6 +63,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "14",  // bright cyan
 		Muted:   "245", // medium gray
 		Header:  "bold",
+		Border:  "244", // medium gray for borders
 		Color1:  "10",  // POST-COMMIT (bright green)
 		Color2:  "13",  // POST-REWRITE (bright magenta)
 		Color3:  "12",  // POST-CHECKOUT (bright blue)
@@ -80,6 +82,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "27",  // dark blue
 		Muted:   "243", // medium-dark gray
 		Header:  "bold",
+		Border:  "250", // light gray for borders
 		Color1:  "28",  // POST-COMMIT (dark green)
 		Color2:  "90",  // POST-REWRITE (dark magenta)
 		Color3:  "27",  // POST-CHECKOUT (dark blue)
@@ -98,6 +101,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "51",  // electric cyan
 		Muted:   "244", // gray
 		Header:  "bold",
+		Border:  "93",  // purple for neon borders
 		Color1:  "46",  // POST-COMMIT (neon green)
 		Color2:  "201", // POST-REWRITE (hot magenta)
 		Color3:  "39",  // POST-CHECKOUT (deep sky blue)
@@ -116,6 +120,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "32",  // deep blue
 		Muted:   "245", // gray
 		Header:  "bold",
+		Border:  "99",  // medium purple for borders
 		Color1:  "28",  // POST-COMMIT (forest green)
 		Color2:  "127", // POST-REWRITE (dark magenta)
 		Color3:  "26",  // POST-CHECKOUT (navy)
@@ -134,6 +139,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "147", // lavender
 		Muted:   "246", // light gray
 		Header:  "bold",
+		Border:  "141", // light purple for aurora borders
 		Color1:  "121", // POST-COMMIT (mint)
 		Color2:  "183", // POST-REWRITE (orchid)
 		Color3:  "111", // POST-CHECKOUT (sky blue)
@@ -151,6 +157,7 @@ var Themes = map[string]ColorConfig{
 		Error:   "125", // dark magenta
 		Info:    "62",  // purple
 		Muted:   "244", // gray
+		Border:  "103", // medium purple for borders
 		Header:  "bold",
 		Color1:  "30",  // POST-COMMIT (dark teal)
 		Color2:  "133", // POST-REWRITE (medium orchid)
@@ -170,6 +177,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "50",  // cyan
 		Muted:   "245", // gray
 		Header:  "bold",
+		Border:  "247", // light gray for mono borders
 		Color1:  "50",  // POST-COMMIT (cyan)
 		Color2:  "251", // POST-REWRITE (light gray)
 		Color3:  "248", // POST-CHECKOUT (gray)
@@ -188,6 +196,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "30",  // dark teal
 		Muted:   "244", // gray
 		Header:  "bold",
+		Border:  "249", // light gray for mono borders
 		Color1:  "30",  // POST-COMMIT (teal)
 		Color2:  "241", // POST-REWRITE (dark gray)
 		Color3:  "244", // POST-CHECKOUT (gray)
@@ -206,6 +215,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "75",  // sky blue
 		Muted:   "245", // gray
 		Header:  "bold",
+		Border:  "68",  // steel blue for ocean borders
 		Color1:  "43",  // POST-COMMIT (turquoise)
 		Color2:  "105", // POST-REWRITE (slate blue)
 		Color3:  "75",  // POST-CHECKOUT (sky blue)
@@ -224,6 +234,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "25",  // dark blue
 		Muted:   "244", // gray
 		Header:  "bold",
+		Border:  "74",  // medium cyan for ocean borders
 		Color1:  "30",  // POST-COMMIT (dark cyan)
 		Color2:  "61",  // POST-REWRITE (slate blue)
 		Color3:  "25",  // POST-CHECKOUT (dark blue)
@@ -242,6 +253,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "183", // plum
 		Muted:   "245", // gray
 		Header:  "bold",
+		Border:  "175", // light pink for sunset borders
 		Color1:  "216", // POST-COMMIT (salmon)
 		Color2:  "213", // POST-REWRITE (orchid)
 		Color3:  "183", // POST-CHECKOUT (plum)
@@ -260,6 +272,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "90",  // dark magenta
 		Muted:   "244", // gray
 		Header:  "bold",
+		Border:  "132", // medium orchid for sunset borders
 		Color1:  "166", // POST-COMMIT (dark orange)
 		Color2:  "127", // POST-REWRITE (medium violet)
 		Color3:  "90",  // POST-CHECKOUT (dark magenta)
@@ -278,6 +291,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "153", // baby blue
 		Muted:   "250", // light gray
 		Header:  "bold",
+		Border:  "183", // light orchid for candy borders
 		Color1:  "158", // POST-COMMIT (mint)
 		Color2:  "218", // POST-REWRITE (pink)
 		Color3:  "153", // POST-CHECKOUT (baby blue)
@@ -296,6 +310,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "68",  // medium blue
 		Muted:   "244", // gray
 		Header:  "bold",
+		Border:  "139", // medium pink for candy borders
 		Color1:  "36",  // POST-COMMIT (dark mint)
 		Color2:  "132", // POST-REWRITE (medium orchid)
 		Color3:  "68",  // POST-CHECKOUT (medium blue)
@@ -314,6 +329,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "51",  // pure bright cyan
 		Muted:   "250", // bright gray
 		Header:  "bold",
+		Border:  "255", // white for high contrast borders
 		Color1:  "46",  // POST-COMMIT (green)
 		Color2:  "201", // POST-REWRITE (magenta)
 		Color3:  "21",  // POST-CHECKOUT (blue)
@@ -332,6 +348,7 @@ var Themes = map[string]ColorConfig{
 		Info:    "21",  // dark blue
 		Muted:   "240", // dark gray
 		Header:  "bold",
+		Border:  "238", // dark gray for high contrast borders
 		Color1:  "22",  // POST-COMMIT (dark green)
 		Color2:  "90",  // POST-REWRITE (dark magenta)
 		Color3:  "19",  // POST-CHECKOUT (dark blue)
@@ -350,6 +367,7 @@ var colorConfigKeys = map[string]string{
 	"color_info":    "Info",
 	"color_muted":   "Muted",
 	"color_header":  "Header",
+	"color_border":  "Border",
 	"color_1":       "Color1",
 	"color_2":       "Color2",
 	"color_3":       "Color3",
@@ -439,6 +457,8 @@ func setColorField(c *ColorConfig, field, value string) {
 		c.Muted = value
 	case "Header":
 		c.Header = value
+	case "Border":
+		c.Border = value
 	case "Color1":
 		c.Color1 = value
 	case "Color2":
