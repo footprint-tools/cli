@@ -40,3 +40,47 @@ DATA RETENTION
 
 fp does not automatically delete old events. The database will grow
 over time. You can manually delete the database file to reset.
+
+EXPORT TO CSV
+
+Events are automatically exported to CSV files with enriched metadata.
+Exports run periodically (default: every hour) after recording events.
+
+Export location:
+    ~/.config/Footprint/exports/          (Linux)
+    ~/Library/Application Support/Footprint/exports/  (macOS)
+
+CSV structure (year-based rotation):
+    commits.csv          Current year's events
+    commits-2024.csv     Events from 2024
+    commits-2023.csv     Events from 2023
+
+CSV COLUMNS
+
+Each exported row contains (in order):
+
+    authored_at      When the author made the commit (RFC3339)
+    repo             Repository identifier
+    branch           Branch name
+    commit           Full commit hash (40 chars)
+    subject          First line of commit message
+    author           Commit author name
+    author_email     Commit author email
+    files            Number of files modified
+    additions        Lines added
+    deletions        Lines removed
+    parents          Parent commit hashes (space-separated)
+    committer        Committer name
+    committer_email  Committer email
+    committed_at     When the event was recorded (RFC3339)
+    source           Event source (post-commit, backfill, etc.)
+    machine          Hostname where the commit was recorded
+
+SYNC TO REMOTE
+
+Configure a remote to automatically push exports:
+
+    $ fp config set export_remote git@github.com:user/exports.git
+
+The export directory is a git repository. Each export creates a commit
+and pushes to the configured remote if available.

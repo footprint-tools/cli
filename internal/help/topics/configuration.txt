@@ -3,11 +3,26 @@ CONFIGURATION
 fp stores configuration in ~/.fprc as simple key=value pairs.
 Use 'fp config' commands to manage settings.
 
-AVAILABLE OPTIONS
+EXPORT OPTIONS
+
+    export_remote     Remote URL for syncing exports to a git repository.
+                      When set, fp will push exported CSV files to this remote.
+                      Example: fp config set export_remote git@github.com:user/exports.git
+
+    export_interval   Seconds between automatic exports (default: 3600 = 1 hour).
+                      Example: fp config set export_interval 1800
+
+    export_repo       Path to local export repository.
+                      Default: ~/.config/Footprint/exports (Linux)
+                               ~/Library/Application Support/Footprint/exports (macOS)
+
+APPEARANCE OPTIONS
 
     color_theme     Color theme name (default, neon, aurora, mono, ocean,
                     sunset, candy, contrast). Add -dark or -light suffix.
                     Example: fp config set color_theme neon-dark
+
+LOGGING OPTIONS
 
     log_enabled     Enable application logging (true/false).
                     Example: fp config set log_enabled true
