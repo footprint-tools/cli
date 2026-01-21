@@ -138,23 +138,40 @@ fp sync-remote [path]
 
 ### Exporting data
 
-Export pending events to CSV:
+Events are automatically exported to CSV files after recording. You can also trigger manually:
 
 ```
-fp export
-fp export --force            # Export even if interval hasn't passed
+fp export --force            # Export immediately
 fp export --dry-run          # Preview what would be exported
 fp export --open             # Open export directory in file manager
-fp export --set-remote=<url> # Set remote URL for export repository
 ```
 
-The export repository is a git repository where CSV files are committed.
-Default location: `~/.config/Footprint/exports`
+**CSV Structure (year-based rotation):**
 
-Configuration:
-- `export_interval` - Seconds between exports (default: 3600 = 1 hour)
-- `export_repo` - Path to export repository
-- `export_last` - Unix timestamp of last export (managed internally)
+```
+~/.config/Footprint/exports/
+├── commits.csv          # Current year
+├── commits-2024.csv     # Events from 2024
+└── commits-2023.csv     # Events from 2023
+```
+
+Each CSV contains enriched data: authored_at, repo, branch, commit, subject, author, files, additions, deletions, parents, committer, committed_at, source, and machine.
+
+**Sync to remote repository:**
+
+```
+fp config set export_remote git@github.com:user/my-exports.git
+```
+
+When configured, exports are automatically pushed to the remote.
+
+**Configuration:**
+
+| Key | Description |
+|-----|-------------|
+| `export_remote` | Remote URL for syncing exports |
+| `export_interval` | Seconds between auto-exports (default: 3600) |
+| `export_repo` | Path to local export repository |
 
 ### Importing historical data
 
@@ -205,8 +222,12 @@ Available configuration keys:
 | Key | Description |
 |-----|-------------|
 | `pager` | Override the default pager. Set to `cat` to disable paging. |
+| `export_remote` | Remote URL for syncing exports (configures git remote) |
 | `export_interval` | Seconds between automatic exports (default: 3600) |
 | `export_repo` | Path to export repository |
+| `theme` | Color theme (default, neon, aurora, mono, ocean, sunset, candy, contrast) |
+| `log_enabled` | Enable/disable logging (true/false) |
+| `log_level` | Log verbosity (debug, info, warn, error) |
 
 Pager precedence:
 1. `--no-pager` flag → direct output
@@ -227,7 +248,7 @@ fp help <topic>          # Conceptual documentation
 fp version               # Show version
 ```
 
-Available help topics: `overview`, `workflow`, `hooks`, `data`.
+Available help topics: `overview`, `workflow`, `hooks`, `data`, `configuration`, `troubleshooting`.
 
 ## Data storage
 
