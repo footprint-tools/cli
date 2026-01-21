@@ -154,9 +154,8 @@ func runGit(args ...string) (string, error) {
 
 // CommitMetadata contains enriched data from Git for a specific commit.
 type CommitMetadata struct {
-	CommitShort    string // First 10 characters of commit hash
-	ParentCommits  string // Comma-separated list of parent commit hashes
-	IsMerge        bool   // True if commit has more than one parent
+	AuthoredAt     string // Author date in RFC3339 format
+	ParentCommits  string // Space-separated list of parent commit hashes
 	AuthorName     string
 	AuthorEmail    string
 	CommitterName  string
@@ -171,28 +170,26 @@ type CommitMetadata struct {
 // repoPath is the path to the repository, commit is the full commit hash.
 // Returns empty values (not errors) if the data cannot be retrieved.
 func GetCommitMetadata(repoPath, commit string) CommitMetadata {
-	meta := CommitMetadata{
-		CommitShort: truncateCommit(commit, 10),
-	}
+	meta := CommitMetadata{}
 
 	// Get parent commits using git rev-list
 	if parents, err := runGitInRepo(repoPath, "rev-parse", commit+"^@"); err == nil {
 		parentList := parseParents(parents)
-		meta.ParentCommits = strings.Join(parentList, ",")
-		meta.IsMerge = len(parentList) > 1
+		meta.ParentCommits = strings.Join(parentList, " ")
 	}
 
-	// Get author, committer info and subject using git show with format
-	// Format: author_name%x00author_email%x00committer_name%x00committer_email%x00subject
-	format := "%an%x00%ae%x00%cn%x00%ce%x00%s"
+	// Get author, committer info, author date, and subject using git show with format
+	// Format: author_name%x00author_email%x00author_date_iso%x00committer_name%x00committer_email%x00subject
+	format := "%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%s"
 	if info, err := runGitInRepo(repoPath, "show", "-s", "--format="+format, commit); err == nil {
 		parts := strings.Split(info, "\x00")
-		if len(parts) >= 5 {
+		if len(parts) >= 6 {
 			meta.AuthorName = parts[0]
 			meta.AuthorEmail = parts[1]
-			meta.CommitterName = parts[2]
-			meta.CommitterEmail = parts[3]
-			meta.Subject = parts[4]
+			meta.AuthoredAt = parts[2]
+			meta.CommitterName = parts[3]
+			meta.CommitterEmail = parts[4]
+			meta.Subject = parts[5]
 		}
 	}
 

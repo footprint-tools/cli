@@ -430,11 +430,10 @@ func TestGetCommitMetadata(t *testing.T) {
 	meta := GetCommitMetadata(repo, commitHash)
 
 	// Verify basic fields (these should always be populated)
-	require.Equal(t, commitHash[:10], meta.CommitShort)
 	require.Equal(t, "Test User", meta.AuthorName)
 	require.Equal(t, "test@example.com", meta.AuthorEmail)
 	require.Equal(t, "Add test.txt", meta.Subject)
-	require.False(t, meta.IsMerge)
+	require.NotEmpty(t, meta.AuthoredAt)
 
 	// Diff stats may or may not be populated depending on git behavior
 	// Just verify they are non-negative
