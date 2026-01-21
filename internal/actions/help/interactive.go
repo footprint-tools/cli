@@ -9,6 +9,7 @@ import (
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/help"
+	"github.com/Skryensya/footprint/internal/ui/splitpanel"
 	"github.com/Skryensya/footprint/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -593,31 +594,26 @@ func (m model) View() string {
 	footerHeight := 2
 	mainHeight := height - headerHeight - footerHeight
 
-	// Calculate sidebar and content widths (sidebar ~25% but min 24, max 36)
-	sidebarWidth := width / 4
-	if sidebarWidth < 24 {
-		sidebarWidth = 24
+	// Create layout
+	cfg := splitpanel.Config{
+		SidebarWidthPercent: 0.25,
+		SidebarMinWidth:     24,
+		SidebarMaxWidth:     36,
 	}
-	if sidebarWidth > 36 {
-		sidebarWidth = 36
-	}
-	contentWidth := width - sidebarWidth - 1 // 1 for border
+	layout := splitpanel.NewLayout(width, cfg, m.colors)
+	layout.SetFocus(m.focusSidebar)
+
+	// Build sidebar panel
+	sidebarPanel := m.buildSidebarPanel(layout, mainHeight)
+
+	// Build content panel
+	contentPanel := m.buildContentPanel(layout, mainHeight)
 
 	// Render header
 	header := m.renderHeader(width)
 
-	// Render sidebar
-	sidebar := m.renderSidebar(sidebarWidth, mainHeight)
-
-	// Render content
-	content := m.renderContent(contentWidth, mainHeight)
-
-	// Join sidebar and content
-	main := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		sidebar,
-		content,
-	)
+	// Render main area using splitpanel
+	main := layout.Render(sidebarPanel, contentPanel, mainHeight)
 
 	// Footer
 	footer := m.renderFooter(width)
@@ -661,25 +657,18 @@ func (m model) renderHeader(width int) string {
 
 	headerContent := title + countText + searchText
 
-	borderColor := lipgloss.Color(colors.Border)
-
 	headerStyle := lipgloss.NewStyle().
 		Width(width).
-		BorderBottom(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1).
-		MarginBottom(0)
+		Padding(0, 1)
 
 	return headerStyle.Render(headerContent)
 }
 
-func (m model) renderSidebar(width, height int) string {
+func (m *model) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
 	warnColor := lipgloss.Color(colors.Warning)
-	themeBorderColor := lipgloss.Color(colors.Border)
 
 	// Topic colors from theme
 	topicColors := []lipgloss.Color{
@@ -692,11 +681,7 @@ func (m model) renderSidebar(width, height int) string {
 		lipgloss.Color(colors.Color7),
 	}
 
-	// Reserve space for scrollbar (2 chars: space + bar)
-	scrollbarWidth := 2
-	contentWidth := width - scrollbarWidth - 2 // -2 for padding
-
-	visibleHeight := height - 2 // Account for padding
+	visibleHeight := height - 2 // Account for panel border
 
 	// Calculate scroll offset to keep cursor visible
 	scrollOffset := m.sidebarScroll
@@ -733,14 +718,12 @@ func (m model) renderSidebar(width, height int) string {
 		}
 
 		var line string
-		itemWidth := contentWidth - 2 // Account for prefix
 
 		if item.IsCategory {
 			// Category header - compact, no extra spacing
 			categoryStyle := lipgloss.NewStyle().
 				Foreground(mutedColor).
-				Bold(true).
-				Width(itemWidth + 2)
+				Bold(true)
 
 			line = categoryStyle.Render(item.DisplayName)
 		} else {
@@ -754,7 +737,7 @@ func (m model) renderSidebar(width, height int) string {
 				}
 			}
 
-			nameStyle := lipgloss.NewStyle().Width(itemWidth)
+			nameStyle := lipgloss.NewStyle()
 
 			if i == m.cursor {
 				// Selected item
@@ -789,154 +772,30 @@ func (m model) renderSidebar(width, height int) string {
 		lines = append(lines, line)
 	}
 
-	// Pad to fill height
-	for len(lines) < visibleHeight {
-		lines = append(lines, "")
+	return splitpanel.Panel{
+		Lines:      lines,
+		ScrollPos:  scrollOffset,
+		TotalItems: len(m.items),
 	}
-
-	// Build scrollbar - thumb color depends on focus
-	// Focused: bright (infoColor), Unfocused: dim (borderColor)
-	thumbColor := themeBorderColor
-	if m.focusSidebar {
-		thumbColor = infoColor
-	}
-	scrollbar := m.buildScrollbar(visibleHeight, len(m.items), scrollOffset, thumbColor, themeBorderColor)
-
-	// Combine content with scrollbar
-	var combinedLines []string
-	for i, line := range lines {
-		scrollChar := " "
-		if i < len(scrollbar) {
-			scrollChar = scrollbar[i]
-		}
-		// Pad line to fixed width and add scrollbar
-		paddedLine := line
-		lineLen := lipgloss.Width(line)
-		if lineLen < contentWidth {
-			paddedLine = line + strings.Repeat(" ", contentWidth-lineLen)
-		}
-		combinedLines = append(combinedLines, paddedLine+" "+scrollChar)
-	}
-
-	sidebarContent := strings.Join(combinedLines, "\n")
-
-	// Border style depends on focus
-	borderColor := themeBorderColor
-	if m.focusSidebar {
-		borderColor = infoColor
-	}
-
-	sidebarStyle := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		BorderRight(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1)
-
-	return sidebarStyle.Render(sidebarContent)
 }
 
-// Scrollbar characters
-const (
-	scrollThumbChar = "█" // Full block for thumb (solid)
-	scrollTrackChar = "│" // Box drawing vertical for track (hollow/border only)
-)
 
-// buildScrollbar creates a visual scrollbar for the given parameters.
-// viewHeight: the visible height of the scrollbar track
-// totalItems: total number of items/lines in the content
-// scrollOffset: current scroll position (0-based)
-func (m model) buildScrollbar(viewHeight, totalItems, scrollOffset int, activeColor, trackColor lipgloss.Color) []string {
-	scrollbar := make([]string, viewHeight)
-	trackStyle := lipgloss.NewStyle().Foreground(trackColor)
-
-	// If all items fit, show only track (no thumb needed)
-	if totalItems <= viewHeight {
-		for i := range scrollbar {
-			scrollbar[i] = trackStyle.Render(scrollTrackChar)
-		}
-		return scrollbar
-	}
-
-	// Calculate thumb size proportional to visible content
-	// thumbSize = (visible / total) * trackHeight
-	// Make it slightly smaller for better visual appearance
-	thumbSize := (viewHeight * viewHeight) / totalItems
-
-	// Ensure minimum size of 1, maximum of viewHeight-2 (leave room for position indication)
-	if thumbSize < 1 {
-		thumbSize = 1
-	}
-	maxThumbSize := viewHeight - 2
-	if maxThumbSize < 1 {
-		maxThumbSize = 1
-	}
-	if thumbSize > maxThumbSize {
-		thumbSize = maxThumbSize
-	}
-
-	// Calculate thumb position
-	// Position is proportional to scroll offset within scrollable range
-	maxScroll := totalItems - viewHeight
-	if maxScroll < 1 {
-		maxScroll = 1
-	}
-
-	// Available track space for thumb movement
-	trackSpace := viewHeight - thumbSize
-	if trackSpace < 0 {
-		trackSpace = 0
-	}
-
-	// Calculate position: (scrollOffset / maxScroll) * trackSpace
-	thumbPos := 0
-	if maxScroll > 0 && trackSpace > 0 {
-		thumbPos = (scrollOffset * trackSpace) / maxScroll
-	}
-
-	// Clamp thumb position
-	if thumbPos < 0 {
-		thumbPos = 0
-	}
-	if thumbPos > trackSpace {
-		thumbPos = trackSpace
-	}
-
-	// Build scrollbar
-	thumbStyle := lipgloss.NewStyle().Foreground(activeColor)
-
-	for i := 0; i < viewHeight; i++ {
-		if i >= thumbPos && i < thumbPos+thumbSize {
-			scrollbar[i] = thumbStyle.Render(scrollThumbChar)
-		} else {
-			scrollbar[i] = trackStyle.Render(scrollTrackChar)
-		}
-	}
-
-	return scrollbar
-}
-
-func (m model) renderContent(width, height int) string {
-	infoColor := lipgloss.Color(m.colors.Info)
+func (m *model) buildContentPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	mutedColor := lipgloss.Color(m.colors.Muted)
-	themeBorderColor := lipgloss.Color(m.colors.Border)
 
 	if len(m.items) == 0 || m.cursor >= len(m.items) {
 		// No content to show
-		emptyStyle := lipgloss.NewStyle().
-			Width(width).
-			Height(height).
-			Padding(1, 2).
-			Foreground(mutedColor)
-		return emptyStyle.Render("No item selected")
+		emptyStyle := lipgloss.NewStyle().Foreground(mutedColor)
+		return splitpanel.Panel{
+			Lines:      []string{emptyStyle.Render("No item selected")},
+			ScrollPos:  0,
+			TotalItems: 1,
+		}
 	}
 
 	item := m.items[m.cursor]
 
-	// Reserve space for scrollbar
-	scrollbarWidth := 2
-	contentWidth := width - scrollbarWidth - 4 // -4 for padding
+	contentWidth := layout.MainContentWidth()
 
 	var content string
 	if item.IsTopic {
@@ -945,80 +804,35 @@ func (m model) renderContent(width, height int) string {
 		content = m.renderCommandContent(item.Node, contentWidth)
 	}
 
-	// Apply scrolling
+	// Split content into lines
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
 
-	// Clamp scroll to valid range
-	maxScroll := totalLines - (height - 2)
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-	scrollOffset := m.contentScroll
-	if scrollOffset > maxScroll {
-		scrollOffset = maxScroll
-	}
-	if scrollOffset < 0 {
-		scrollOffset = 0
-	}
+	visibleHeight := height - 2 // Account for panel border
 
+	// Clamp scroll to valid range
+	maxScroll := totalLines - visibleHeight
+	maxScroll = max(maxScroll, 0)
+
+	scrollOffset := m.contentScroll
+	scrollOffset = min(scrollOffset, maxScroll)
+	scrollOffset = max(scrollOffset, 0)
+
+	// Apply scrolling - get visible portion
 	if scrollOffset > 0 && scrollOffset < len(lines) {
 		lines = lines[scrollOffset:]
 	}
-
-	visibleHeight := height - 2
 
 	// Truncate to fit height
 	if len(lines) > visibleHeight {
 		lines = lines[:visibleHeight]
 	}
 
-	// Pad lines to fill visible height
-	for len(lines) < visibleHeight {
-		lines = append(lines, "")
+	return splitpanel.Panel{
+		Lines:      lines,
+		ScrollPos:  scrollOffset,
+		TotalItems: totalLines,
 	}
-
-	// Build scrollbar for content - thumb color depends on focus
-	// Focused (content): bright (infoColor), Unfocused: dim (borderColor)
-	thumbColor := themeBorderColor
-	if !m.focusSidebar {
-		thumbColor = infoColor
-	}
-	scrollbar := m.buildScrollbar(visibleHeight, totalLines, scrollOffset, thumbColor, themeBorderColor)
-
-	// Combine content with scrollbar
-	var combinedLines []string
-	for i, line := range lines {
-		scrollChar := " "
-		if i < len(scrollbar) {
-			scrollChar = scrollbar[i]
-		}
-		// Pad line to fixed width and add scrollbar
-		paddedLine := line
-		lineLen := lipgloss.Width(line)
-		if lineLen < contentWidth {
-			paddedLine = line + strings.Repeat(" ", contentWidth-lineLen)
-		}
-		combinedLines = append(combinedLines, paddedLine+" "+scrollChar)
-	}
-
-	rendered := strings.Join(combinedLines, "\n")
-
-	// Border style depends on focus
-	borderColor := themeBorderColor
-	if !m.focusSidebar {
-		borderColor = infoColor
-	}
-
-	contentStyle := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		BorderLeft(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 2)
-
-	return contentStyle.Render(rendered)
 }
 
 func (m model) renderCommandContent(node *dispatchers.DispatchNode, width int) string {
@@ -1226,9 +1040,6 @@ func (m model) renderFooter(width int) string {
 
 	footerStyle := lipgloss.NewStyle().
 		Width(width).
-		BorderTop(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
 		Padding(0, 1)
 
 	return footerStyle.Render(footer)

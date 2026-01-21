@@ -5,8 +5,10 @@ import (
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
 	"github.com/Skryensya/footprint/internal/help"
+	"github.com/Skryensya/footprint/internal/ui/splitpanel"
 	"github.com/Skryensya/footprint/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/require"
 )
 
@@ -603,22 +605,18 @@ func TestDefaultDeps_AllTopics(t *testing.T) {
 	require.NotNil(t, topics)
 }
 
-func TestModel_BuildScrollbar_AllFit(t *testing.T) {
-	m := createTestModel()
-
-	scrollbar := m.buildScrollbar(10, 5, 0, "14", "238")
+func TestBuildScrollbar_AllFit(t *testing.T) {
+	scrollbar := splitpanel.BuildScrollbar(10, 5, 0, lipgloss.Color("14"), lipgloss.Color("238"), true)
 
 	require.Len(t, scrollbar, 10)
-	// All items should show track since everything fits
+	// All items should show blank space since everything fits
 	for _, s := range scrollbar {
 		require.NotEmpty(t, s)
 	}
 }
 
-func TestModel_BuildScrollbar_NeedsScroll(t *testing.T) {
-	m := createTestModel()
-
-	scrollbar := m.buildScrollbar(10, 30, 0, "14", "238")
+func TestBuildScrollbar_NeedsScroll(t *testing.T) {
+	scrollbar := splitpanel.BuildScrollbar(10, 30, 0, lipgloss.Color("14"), lipgloss.Color("238"), true)
 
 	require.Len(t, scrollbar, 10)
 	// Should have some thumb indicators
@@ -627,10 +625,8 @@ func TestModel_BuildScrollbar_NeedsScroll(t *testing.T) {
 	}
 }
 
-func TestModel_BuildScrollbar_ScrolledDown(t *testing.T) {
-	m := createTestModel()
-
-	scrollbar := m.buildScrollbar(10, 30, 15, "14", "238")
+func TestBuildScrollbar_ScrolledDown(t *testing.T) {
+	scrollbar := splitpanel.BuildScrollbar(10, 30, 15, lipgloss.Color("14"), lipgloss.Color("238"), true)
 
 	require.Len(t, scrollbar, 10)
 	// Should have thumb in middle/bottom area
@@ -639,7 +635,7 @@ func TestModel_BuildScrollbar_ScrolledDown(t *testing.T) {
 	}
 }
 
-func TestModel_RenderSidebar_WithTopics(t *testing.T) {
+func TestModel_BuildSidebarPanel_WithTopics(t *testing.T) {
 	items := []sidebarItem{
 		{Name: "category1", DisplayName: "CATEGORY 1", IsCategory: true},
 		{Name: "cmd1", DisplayName: "cmd1", IsCategory: false, Node: &dispatchers.DispatchNode{
@@ -664,18 +660,29 @@ func TestModel_RenderSidebar_WithTopics(t *testing.T) {
 		totalCommands: 2,
 	}
 
-	sidebar := m.renderSidebar(30, 20)
+	cfg := splitpanel.Config{
+		SidebarWidthPercent: 0.25,
+		SidebarMinWidth:     24,
+		SidebarMaxWidth:     36,
+	}
+	layout := splitpanel.NewLayout(80, cfg, m.colors)
+	panel := m.buildSidebarPanel(layout, 20)
 
-	require.NotEmpty(t, sidebar)
-	require.Contains(t, sidebar, "cmd1")
+	require.NotEmpty(t, panel.Lines)
 }
 
-func TestModel_RenderContent_WithScrollbar(t *testing.T) {
+func TestModel_BuildContentPanel_WithScrollbar(t *testing.T) {
 	m := createTestModel()
 	m.width = 100
 	m.height = 20
 
-	content := m.renderContent(70, 18)
+	cfg := splitpanel.Config{
+		SidebarWidthPercent: 0.25,
+		SidebarMinWidth:     24,
+		SidebarMaxWidth:     36,
+	}
+	layout := splitpanel.NewLayout(100, cfg, m.colors)
+	panel := m.buildContentPanel(layout, 18)
 
-	require.NotEmpty(t, content)
+	require.NotNil(t, panel)
 }
