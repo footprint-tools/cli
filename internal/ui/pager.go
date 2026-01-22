@@ -1,3 +1,9 @@
+// Package ui provides terminal UI utilities including pager support.
+//
+// SECURITY NOTE: The pager functionality intentionally allows execution of
+// arbitrary commands specified via --pager flag or config. This is standard
+// behavior for CLI tools (similar to git, less, man) and requires local
+// access to exploit. Users should only configure pagers they trust.
 package ui
 
 import (
