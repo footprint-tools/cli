@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Skryensya/footprint/internal/log"
 	"github.com/Skryensya/footprint/internal/paths"
 )
 
@@ -21,7 +22,9 @@ func ReadLines() ([]string, error) {
 	defer file.Close()
 
 	// Ensure correct permissions if file already existed
-	_ = os.Chmod(configPath, 0600)
+	if err := os.Chmod(configPath, 0600); err != nil {
+		log.Warn("config: could not set permissions on config file: %v", err)
+	}
 
 	var lines []string
 	scanner := bufio.NewScanner(file)
