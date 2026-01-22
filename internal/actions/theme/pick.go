@@ -202,7 +202,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyEnter, tea.KeySpace:
-			m.chosen = m.themes[m.cursor]
+			if m.cursor >= 0 && m.cursor < len(m.themes) {
+				m.chosen = m.themes[m.cursor]
+			}
 			return m, tea.Quit
 
 		case tea.KeyRunes:
@@ -272,6 +274,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	if m.width == 0 || m.height == 0 {
 		return "Loading..."
+	}
+
+	// Validate cursor bounds to prevent panic
+	if len(m.themes) == 0 || m.cursor < 0 || m.cursor >= len(m.themes) {
+		return "No themes available"
 	}
 
 	// Calculate dimensions
