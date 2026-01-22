@@ -2,10 +2,13 @@ package logs
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Skryensya/footprint/internal/dispatchers"
@@ -90,21 +93,48 @@ func tail(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	deps.Println(style.Muted("Following logs at " + logPath + " (Ctrl+C to stop)"))
 	deps.Println("")
 
+	// Setup signal handling for clean shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
 	reader := bufio.NewReader(file)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				return fmt.Errorf("read log file: %w", err)
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				if err != io.EOF {
+					return fmt.Errorf("read log file: %w", err)
+				}
+				// EOF - wait for next tick
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-ticker.C:
+					continue
+				}
 			}
-			// EOF - wait and try again
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
 
-		// Print the line (without extra newline since ReadString includes it)
-		fmt.Print(colorizeLogLine(strings.TrimSuffix(line, "\n")) + "\n")
+			// Print the line (without extra newline since ReadString includes it)
+			fmt.Print(colorizeLogLine(strings.TrimSuffix(line, "\n")) + "\n")
+		}
 	}
 }
 
