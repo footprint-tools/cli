@@ -23,6 +23,11 @@ import (
 const (
 	// CSV filename constants
 	activeCSVName = "commits.csv"
+
+	// Retry configuration for network operations
+	maxRetries     = 3
+	initialBackoff = 1 * time.Second
+	maxBackoff     = 10 * time.Second
 )
 
 // CSV header for enriched export (ordered by importance)
@@ -66,7 +71,7 @@ func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	if err != nil {
 		return fmt.Errorf("could not open database: %w", err)
 	}
-	defer db.Close()
+	defer store.CloseDB(db)
 
 	_ = deps.InitDB(db)
 
@@ -146,20 +151,29 @@ func doExportWork(db *sql.DB, events []store.RepoEvent, deps Deps) (int, bool, e
 		return 0, false, fmt.Errorf("could not commit export: %w", err)
 	}
 
+	// Try to push if remote exists
+	pushed := false
+	hasRemote := deps.HasRemote(exportRepo)
+	if hasRemote {
+		if err := deps.PushExportRepo(exportRepo); err != nil {
+			// Push failed - don't mark events as exported so they'll be retried
+			// Return count of locally exported events but pushed=false
+			log.Warn("export: failed to push to remote, events will remain pending: %v", err)
+			return len(exportedIDs), false, nil
+		}
+		pushed = true
+	}
+
+	// Only mark as exported after successful push (or if no remote)
+	// Note: If this fails, events remain PENDING and will be retried.
+	// The CSV deduplication logic prevents duplicate entries on re-export,
+	// making the system eventually consistent without requiring transactions.
 	if err := store.UpdateEventStatuses(db, exportedIDs, store.StatusExported); err != nil {
+		log.Error("export: failed to update event statuses, events will be retried: %v", err)
 		return 0, false, fmt.Errorf("could not update event statuses: %w", err)
 	}
 
 	_ = saveExportLast(deps.Now().Unix())
-
-	pushed := false
-	if deps.HasRemote(exportRepo) {
-		if err := deps.PushExportRepo(exportRepo); err != nil {
-			log.Warn("export: failed to push to remote: %v", err)
-		} else {
-			pushed = true
-		}
-	}
 
 	return len(exportedIDs), pushed, nil
 }
@@ -269,6 +283,21 @@ func getCSVPath(exportRepo string, eventTime time.Time, currentYear int) string 
 	return filepath.Join(exportRepo, csvName)
 }
 
+// findColumnIndices returns the indices of "repo" and "commit" columns from the header.
+// Returns -1 for either if not found.
+func findColumnIndices(header []string) (repoIdx, commitIdx int) {
+	repoIdx, commitIdx = -1, -1
+	for i, col := range header {
+		switch col {
+		case "repo":
+			repoIdx = i
+		case "commit":
+			commitIdx = i
+		}
+	}
+	return repoIdx, commitIdx
+}
+
 // loadCSVRecords loads existing CSV into a map keyed by repo:commit.
 func loadCSVRecords(csvPath string) map[string][]string {
 	records := make(map[string][]string)
@@ -285,12 +314,29 @@ func loadCSVRecords(csvPath string) map[string][]string {
 		return records
 	}
 
-	// Skip header, parse records
-	for i, line := range lines {
-		if i == 0 || len(line) < 4 {
+	if len(lines) == 0 {
+		return records
+	}
+
+	// Parse header to find column indices
+	repoIdx, commitIdx := findColumnIndices(lines[0])
+	if repoIdx < 0 || commitIdx < 0 {
+		log.Warn("export: CSV header missing 'repo' or 'commit' column, using legacy indices")
+		repoIdx, commitIdx = 1, 3 // Fallback to legacy indices
+	}
+
+	// Parse records (skip header)
+	maxIdx := repoIdx
+	if commitIdx > maxIdx {
+		maxIdx = commitIdx
+	}
+
+	for i, line := range lines[1:] {
+		if len(line) <= maxIdx {
+			log.Warn("export: skipping malformed CSV line %d (expected at least %d columns)", i+2, maxIdx+1)
 			continue
 		}
-		key := line[1] + ":" + line[3] // repo:commit
+		key := line[repoIdx] + ":" + line[commitIdx]
 		records[key] = line
 	}
 
@@ -337,6 +383,10 @@ func writeCSVSorted(csvPath string, records map[string][]string) error {
 		lines = append(lines, record)
 	}
 	sort.Slice(lines, func(i, j int) bool {
+		// Bounds check: ensure both lines have at least one element
+		if len(lines[i]) == 0 || len(lines[j]) == 0 {
+			return len(lines[i]) > len(lines[j])
+		}
 		return lines[i][0] < lines[j][0] // authored_at is RFC3339, sorts correctly
 	})
 
@@ -345,19 +395,41 @@ func writeCSVSorted(csvPath string, records map[string][]string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
 	w := csv.NewWriter(file)
 	if err := w.Write(csvHeader); err != nil {
+		file.Close()
 		return err
 	}
+	expectedFields := len(csvHeader)
 	for _, line := range lines {
+		if len(line) != expectedFields {
+			log.Warn("export: record has %d fields, expected %d, skipping", len(line), expectedFields)
+			continue
+		}
 		if err := w.Write(line); err != nil {
+			file.Close()
 			return err
 		}
 	}
 	w.Flush()
-	return w.Error()
+	if err := w.Error(); err != nil {
+		file.Close()
+		return err
+	}
+
+	// Sync to ensure data is written to disk
+	if err := file.Sync(); err != nil {
+		file.Close()
+		return fmt.Errorf("sync CSV file: %w", err)
+	}
+
+	// Close and check for errors
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close CSV file: %w", err)
+	}
+
+	return nil
 }
 
 // getHostname returns the machine hostname or empty string if unavailable.
@@ -373,8 +445,27 @@ func shouldExport(deps Deps) (bool, error) {
 	intervalStr, _ := config.Get("export_interval")
 	lastExportStr, _ := config.Get("export_last")
 
-	interval, _ := strconv.Atoi(intervalStr)
-	lastExport, _ := strconv.ParseInt(lastExportStr, 10, 64)
+	// Parse interval with default of 0 (always export if not configured)
+	interval := 0
+	if intervalStr != "" {
+		var err error
+		interval, err = strconv.Atoi(intervalStr)
+		if err != nil {
+			log.Warn("export: invalid export_interval config value '%s', using 0", intervalStr)
+			interval = 0
+		}
+	}
+
+	// Parse last export timestamp with default of 0 (epoch)
+	var lastExport int64
+	if lastExportStr != "" {
+		var err error
+		lastExport, err = strconv.ParseInt(lastExportStr, 10, 64)
+		if err != nil {
+			log.Warn("export: invalid export_last config value '%s', using 0", lastExportStr)
+			lastExport = 0
+		}
+	}
 
 	now := deps.Now().Unix()
 	return (now - lastExport) >= int64(interval), nil
@@ -490,17 +581,42 @@ func hasRemote(exportRepo string) bool {
 	return cmd.Run() == nil
 }
 
+// fetchWithRetry performs git fetch with exponential backoff retry.
+func fetchWithRetry(exportRepo string) error {
+	var lastErr error
+	backoff := initialBackoff
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		fetchCmd := exec.Command("git", "fetch", "origin")
+		fetchCmd.Dir = exportRepo
+		if err := fetchCmd.Run(); err != nil {
+			lastErr = err
+			if attempt < maxRetries {
+				log.Debug("export: fetch attempt %d failed, retrying in %v: %v", attempt, backoff, err)
+				time.Sleep(backoff)
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+		} else {
+			return nil // Success
+		}
+	}
+
+	return fmt.Errorf("git fetch failed after %d attempts: %w", maxRetries, lastErr)
+}
+
 // pullExportRepo pulls changes from remote before writing.
 // Handles three scenarios:
 // 1. Remote is empty (first push) - skip pull
 // 2. Normal divergence - rebase local commits on top of remote
 // 3. Unrelated histories - merge with automatic CSV conflict resolution
 func pullExportRepo(exportRepo string) error {
-	// First, fetch to see what's on the remote
-	fetchCmd := exec.Command("git", "fetch", "origin")
-	fetchCmd.Dir = exportRepo
-	if err := fetchCmd.Run(); err != nil {
-		return fmt.Errorf("git fetch failed: %w", err)
+	// First, fetch to see what's on the remote (with retry)
+	if err := fetchWithRetry(exportRepo); err != nil {
+		return err
 	}
 
 	// Check if remote has any branches (empty remote = first push)
@@ -616,19 +732,33 @@ func resolveCSVFile(exportRepo, filePath string) error {
 	// Get "ours" version (local) and "theirs" version (remote)
 	oursCmd := exec.Command("git", "show", ":2:"+filepath.Base(filePath))
 	oursCmd.Dir = exportRepo
-	oursOutput, _ := oursCmd.Output()
+	oursOutput, oursErr := oursCmd.Output()
 
 	theirsCmd := exec.Command("git", "show", ":3:"+filepath.Base(filePath))
 	theirsCmd.Dir = exportRepo
-	theirsOutput, _ := theirsCmd.Output()
+	theirsOutput, theirsErr := theirsCmd.Output()
+
+	// If both versions fail, we can't resolve the conflict
+	if oursErr != nil && theirsErr != nil {
+		return fmt.Errorf("could not retrieve either version for conflict resolution: ours=%v, theirs=%v", oursErr, theirsErr)
+	}
 
 	// Parse both CSVs into maps
 	records := make(map[string][]string) // repo:commit -> record
 
-	// Load ours first
-	parseCSVIntoMap(string(oursOutput), records)
+	// Load ours first (if available)
+	if oursErr == nil && len(oursOutput) > 0 {
+		parseCSVIntoMap(string(oursOutput), records)
+	} else if oursErr != nil {
+		log.Warn("export: could not get 'ours' version during conflict resolution: %v", oursErr)
+	}
+
 	// Load theirs second - will replace duplicates (incoming wins)
-	parseCSVIntoMap(string(theirsOutput), records)
+	if theirsErr == nil && len(theirsOutput) > 0 {
+		parseCSVIntoMap(string(theirsOutput), records)
+	} else if theirsErr != nil {
+		log.Warn("export: could not get 'theirs' version during conflict resolution: %v", theirsErr)
+	}
 
 	// Write using shared function
 	return writeCSVSorted(filePath, records)
@@ -643,19 +773,55 @@ func parseCSVIntoMap(content string, records map[string][]string) {
 		return
 	}
 
-	for i, line := range lines {
-		if i == 0 || len(line) < 4 {
-			continue // skip header
+	if len(lines) == 0 {
+		return
+	}
+
+	// Parse header to find column indices
+	repoIdx, commitIdx := findColumnIndices(lines[0])
+	if repoIdx < 0 || commitIdx < 0 {
+		log.Warn("export: CSV header missing 'repo' or 'commit' column, using legacy indices")
+		repoIdx, commitIdx = 1, 3 // Fallback to legacy indices
+	}
+
+	maxIdx := repoIdx
+	if commitIdx > maxIdx {
+		maxIdx = commitIdx
+	}
+
+	for _, line := range lines[1:] {
+		if len(line) <= maxIdx {
+			continue // skip malformed lines
 		}
-		key := line[1] + ":" + line[3] // repo:commit
+		key := line[repoIdx] + ":" + line[commitIdx]
 		records[key] = line
 	}
 }
 
-// pushExportRepo pushes the export repository to its remote.
+// pushExportRepo pushes the export repository to its remote with retry logic.
 func pushExportRepo(exportRepo string) error {
-	// Push to origin, set upstream if needed
-	cmd := exec.Command("git", "push", "-u", "origin", "HEAD")
-	cmd.Dir = exportRepo
-	return cmd.Run()
+	var lastErr error
+	backoff := initialBackoff
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		cmd := exec.Command("git", "push", "-u", "origin", "HEAD")
+		cmd.Dir = exportRepo
+		if err := cmd.Run(); err != nil {
+			lastErr = err
+			if attempt < maxRetries {
+				log.Debug("export: push attempt %d failed, retrying in %v: %v", attempt, backoff, err)
+				time.Sleep(backoff)
+				// Exponential backoff with cap
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+		} else {
+			return nil // Success
+		}
+	}
+
+	return fmt.Errorf("push failed after %d attempts: %w", maxRetries, lastErr)
 }
