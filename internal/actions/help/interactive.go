@@ -135,8 +135,13 @@ func buildSidebarItems(root *dispatchers.DispatchNode, topics []*help.Topic) []s
 	for cat := range grouped {
 		cmds := grouped[cat]
 		sort.Slice(cmds, func(i, j int) bool {
-			nameI := strings.Join(cmds[i].Path[1:], " ")
-			nameJ := strings.Join(cmds[j].Path[1:], " ")
+			var nameI, nameJ string
+			if len(cmds[i].Path) > 1 {
+				nameI = strings.Join(cmds[i].Path[1:], " ")
+			}
+			if len(cmds[j].Path) > 1 {
+				nameJ = strings.Join(cmds[j].Path[1:], " ")
+			}
 			return nameI < nameJ
 		})
 	}
@@ -157,7 +162,12 @@ func buildSidebarItems(root *dispatchers.DispatchNode, topics []*help.Topic) []s
 
 		// Commands in this category
 		for _, cmd := range cmds {
-			displayName := strings.Join(cmd.Path[1:], " ")
+			var displayName string
+			if len(cmd.Path) > 1 {
+				displayName = strings.Join(cmd.Path[1:], " ")
+			} else if len(cmd.Path) == 1 {
+				displayName = cmd.Path[0]
+			}
 			items = append(items, sidebarItem{
 				Name:        displayName,
 				DisplayName: displayName,
@@ -473,7 +483,10 @@ func (m *model) moveCursor(delta int) {
 		iterations++
 	}
 
-	m.cursor = newCursor
+	// Final bounds check and ensure we're not on a category
+	if newCursor >= 0 && newCursor < len(m.items) && !m.items[newCursor].IsCategory {
+		m.cursor = newCursor
+	}
 }
 
 func (m *model) jumpToFirst() {
@@ -848,7 +861,12 @@ func (m model) renderCommandContent(node *dispatchers.DispatchNode, width int) s
 		Bold(true).
 		Foreground(infoColor)
 
-	displayName := strings.Join(node.Path[1:], " ")
+	var displayName string
+	if len(node.Path) > 1 {
+		displayName = strings.Join(node.Path[1:], " ")
+	} else if len(node.Path) == 1 {
+		displayName = node.Path[0]
+	}
 	b.WriteString(titleStyle.Render(displayName))
 	b.WriteString("\n")
 
