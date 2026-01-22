@@ -11,6 +11,19 @@ type RepoID string
 
 const trackedReposKey = "trackedRepos"
 
+// containsPathTraversal checks if a string contains path traversal sequences
+func containsPathTraversal(s string) bool {
+	// Check for common path traversal patterns
+	if strings.Contains(s, "..") {
+		return true
+	}
+	// Check for null bytes which could be used to bypass checks
+	if strings.Contains(s, "\x00") {
+		return true
+	}
+	return false
+}
+
 func DeriveID(remoteURL, repoRoot string) (RepoID, error) {
 	remoteURL = strings.TrimSpace(remoteURL)
 	repoRoot = strings.TrimSpace(repoRoot)
@@ -24,16 +37,47 @@ func DeriveID(remoteURL, repoRoot string) (RepoID, error) {
 				return "", errors.New("invalid ssh remote url")
 			}
 			host := strings.TrimPrefix(parts[0], "git@")
-			return RepoID(host + "/" + parts[1]), nil
+			path := parts[1]
+
+			// Validate against path traversal
+			if containsPathTraversal(host) || containsPathTraversal(path) {
+				return "", errors.New("invalid remote url: contains path traversal sequence")
+			}
+
+			return RepoID(host + "/" + path), nil
 		}
 
 		if strings.HasPrefix(remoteURL, "https://") || strings.HasPrefix(remoteURL, "http://") {
 			remoteURL = strings.TrimPrefix(remoteURL, "https://")
 			remoteURL = strings.TrimPrefix(remoteURL, "http://")
+
+			// Validate against path traversal
+			if containsPathTraversal(remoteURL) {
+				return "", errors.New("invalid remote url: contains path traversal sequence")
+			}
+
 			return RepoID(remoteURL), nil
 		}
 
-		return "", errors.New("unsupported remote url format")
+		// Support git:// protocol (read-only git protocol)
+		if strings.HasPrefix(remoteURL, "git://") {
+			remoteURL = strings.TrimPrefix(remoteURL, "git://")
+
+			// Validate against path traversal
+			if containsPathTraversal(remoteURL) {
+				return "", errors.New("invalid remote url: contains path traversal sequence")
+			}
+
+			return RepoID(remoteURL), nil
+		}
+
+		// Support file:// protocol (local repositories)
+		if strings.HasPrefix(remoteURL, "file://") {
+			path := strings.TrimPrefix(remoteURL, "file://")
+			return RepoID("local:" + path), nil
+		}
+
+		return "", errors.New("unsupported remote url format: only git@, https://, http://, git://, and file:// are supported")
 	}
 
 	if repoRoot != "" {
