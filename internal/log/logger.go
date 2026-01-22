@@ -64,8 +64,9 @@ type Logger struct {
 }
 
 var (
-	defaultLogger *Logger
-	once          sync.Once
+	defaultLogger   *Logger
+	defaultLoggerMu sync.RWMutex
+	once            sync.Once
 )
 
 // Init inicializa el logger global con el archivo especificado
@@ -85,16 +86,20 @@ func New(logPath string, minLevel Level) (*Logger, error) {
 		return nil, fmt.Errorf("create log directory: %w", err)
 	}
 
+	// Check if file exists and fix permissions if needed (before opening)
+	if info, err := os.Stat(logPath); err == nil {
+		// File exists - check permissions
+		if info.Mode().Perm() != 0600 {
+			if err := os.Chmod(logPath, 0600); err != nil {
+				return nil, fmt.Errorf("chmod existing log file: %w", err)
+			}
+		}
+	}
+
 	// Abrir archivo de log con permisos restrictivos
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("open log file: %w", err)
-	}
-
-	// Asegurar permisos correctos si el archivo ya existía
-	if err := os.Chmod(logPath, 0600); err != nil {
-		file.Close()
-		return nil, fmt.Errorf("chmod log file: %w", err)
 	}
 
 	return &Logger{
@@ -137,7 +142,12 @@ func (l *Logger) log(level Level, format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	logLine := fmt.Sprintf("[%s] %s: %s\n", timestamp, level.String(), message)
 
-	l.file.Write([]byte(logLine))
+	if _, err := l.file.Write([]byte(logLine)); err != nil {
+		// Can't log to file, output to stderr for critical messages
+		if level >= LevelError {
+			fmt.Fprintf(os.Stderr, "logger: write failed: %v (message: %s)\n", err, message)
+		}
+	}
 }
 
 // Debug escribe un mensaje de debug
@@ -179,42 +189,59 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 
 // Debug escribe un mensaje de debug al logger global
 func Debug(format string, args ...interface{}) {
-	if defaultLogger != nil {
-		defaultLogger.Debug(format, args...)
+	defaultLoggerMu.RLock()
+	l := defaultLogger
+	defaultLoggerMu.RUnlock()
+	if l != nil {
+		l.Debug(format, args...)
 	}
 }
 
 // Info escribe un mensaje informativo al logger global
 func Info(format string, args ...interface{}) {
-	if defaultLogger != nil {
-		defaultLogger.Info(format, args...)
+	defaultLoggerMu.RLock()
+	l := defaultLogger
+	defaultLoggerMu.RUnlock()
+	if l != nil {
+		l.Info(format, args...)
 	}
 }
 
 // Warn escribe un warning al logger global
 func Warn(format string, args ...interface{}) {
-	if defaultLogger != nil {
-		defaultLogger.Warn(format, args...)
+	defaultLoggerMu.RLock()
+	l := defaultLogger
+	defaultLoggerMu.RUnlock()
+	if l != nil {
+		l.Warn(format, args...)
 	}
 }
 
 // Error escribe un error al logger global
 func Error(format string, args ...interface{}) {
-	if defaultLogger != nil {
-		defaultLogger.Error(format, args...)
+	defaultLoggerMu.RLock()
+	l := defaultLogger
+	defaultLoggerMu.RUnlock()
+	if l != nil {
+		l.Error(format, args...)
 	}
 }
 
 // Close cierra el logger global
 func Close() error {
-	if defaultLogger != nil {
-		return defaultLogger.Close()
+	defaultLoggerMu.RLock()
+	l := defaultLogger
+	defaultLoggerMu.RUnlock()
+	if l != nil {
+		return l.Close()
 	}
 	return nil
 }
 
 // GetLogger retorna el logger global (puede ser nil si no se inicializó)
 func GetLogger() *Logger {
+	defaultLoggerMu.RLock()
+	defer defaultLoggerMu.RUnlock()
 	return defaultLogger
 }
 
