@@ -61,6 +61,13 @@ func launchBackfillAndWatch(args []string, flags *dispatchers.ParsedFlags, deps 
 		return fmt.Errorf("could not start background process: %w", err)
 	}
 
+	// Reap the background process to prevent zombies
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			log.Debug("backfill: background process exited with error: %v", err)
+		}
+	}()
+
 	deps.Println("Starting backfill in background...")
 
 	// Now run the watch command in foreground
@@ -152,6 +159,7 @@ func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) er
 		// Parse author date
 		timestamp, err := time.Parse(time.RFC3339, c.AuthorDate)
 		if err != nil {
+			log.Warn("backfill: could not parse author date '%s' for commit %s, using current time", c.AuthorDate, c.Hash[:7])
 			timestamp = time.Now().UTC()
 		}
 
