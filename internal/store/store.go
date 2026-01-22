@@ -63,6 +63,18 @@ func (s *Store) Close() error {
 	return nil
 }
 
+// CloseDB closes a database connection and logs any errors.
+// Intended for use in defer statements where errors would otherwise be ignored.
+func CloseDB(db *sql.DB) {
+	if db == nil {
+		return
+	}
+	if err := db.Close(); err != nil {
+		// Use fmt to stderr since log package may not be initialized
+		fmt.Fprintf(os.Stderr, "store: close database: %v\n", err)
+	}
+}
+
 // setDBPermissions sets restrictive file permissions on the database and its WAL/SHM files.
 func setDBPermissions(path string) {
 	if path == ":memory:" {
@@ -151,7 +163,8 @@ func (s *Store) List(filter domain.EventFilter) ([]domain.RepoEvent, error) {
 	query += " ORDER BY timestamp DESC"
 
 	if filter.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", filter.Limit)
+		query += " LIMIT ?"
+		args = append(args, filter.Limit)
 	}
 
 	rows, err := s.db.Query(query, args...)
