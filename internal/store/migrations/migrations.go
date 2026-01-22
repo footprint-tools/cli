@@ -130,7 +130,18 @@ func apply(db *sql.DB, m Migration) error {
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback()
+
+	// Use a flag to track if commit succeeded
+	committed := false
+	defer func() {
+		if !committed {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				// Log rollback error but don't override the original error
+				// This is a best-effort cleanup
+				_ = rbErr // Rollback failed, but we're already returning an error
+			}
+		}
+	}()
 
 	if _, err := tx.Exec(m.SQL); err != nil {
 		return err
@@ -144,7 +155,11 @@ func apply(db *sql.DB, m Migration) error {
 		return fmt.Errorf("record migration: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	committed = true
+	return nil
 }
 
 // CurrentVersion returns the highest applied migration version.
