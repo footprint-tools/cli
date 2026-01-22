@@ -16,7 +16,15 @@ func Set(lines []string, key, value string) ([]string, bool) {
 		}
 
 		if strings.TrimSpace(parts[0]) == key {
-			lines[i] = key + "=" + value
+			// Check for inline comment after the value and preserve it
+			oldValue := parts[1]
+			commentIdx := strings.Index(oldValue, "#")
+			if commentIdx >= 0 {
+				comment := strings.TrimSpace(oldValue[commentIdx:])
+				lines[i] = key + "=" + value + " " + comment
+			} else {
+				lines[i] = key + "=" + value
+			}
 			return lines, true
 		}
 	}
