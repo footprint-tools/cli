@@ -317,18 +317,18 @@ func (m *watchModel) addEvents(events []store.RepoEvent) {
 		m.byRepo[repoName]++
 
 		// Add to buffer (prepend for newest-first)
-		m.events = append([]store.RepoEvent{e}, m.events...)
-
-		// Trim buffer if needed
-		if len(m.events) > maxEvents {
-			m.events = m.events[:maxEvents]
+		// More efficient prepend: shift in place instead of allocating new slice
+		if len(m.events) < maxEvents {
+			m.events = append(m.events, store.RepoEvent{})
 		}
+		copy(m.events[1:], m.events)
+		m.events[0] = e
 	}
 }
 
 func (m *watchModel) updateDrawerDetail() {
 	filtered := m.filteredEvents()
-	if m.cursor >= len(filtered) {
+	if m.cursor < 0 || m.cursor >= len(filtered) {
 		m.drawerDetail = nil
 		return
 	}
