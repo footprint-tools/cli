@@ -117,7 +117,7 @@ func ListEvents(db *sql.DB, filter EventFilter) ([]RepoEvent, error) {
 		log.Error("store: list events query failed: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []RepoEvent
 
@@ -195,7 +195,7 @@ func ListEventsSinceFiltered(db *sql.DB, afterID int64, filter EventFilter) ([]R
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []RepoEvent
 

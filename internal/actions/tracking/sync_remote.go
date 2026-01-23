@@ -72,25 +72,25 @@ func syncRemote(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	log.Info("sync-remote: changed identity from %s to %s", localID, remoteID)
-	deps.Printf("adopted identity:\n  %s\n→ %s\n", localID, remoteID)
+	_, _ = deps.Printf("adopted identity:\n  %s\n→ %s\n", localID, remoteID)
 
 	// Migrate pending events in database
 	db, err := deps.OpenDB(deps.DBPath())
 	if err == nil {
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		_ = deps.InitDB(db)
 
 		migrated, err := store.MigratePendingRepoID(db, string(localID), string(remoteID))
 		if err == nil && migrated > 0 {
 			log.Debug("sync-remote: migrated %d pending events", migrated)
-			deps.Printf("migrated %d pending events\n", migrated)
+			_, _ = deps.Printf("migrated %d pending events\n", migrated)
 		}
 	}
 
 	// Rename export directory if it exists
 	if renamed := renameExportDir(localID, remoteID); renamed {
 		log.Debug("sync-remote: renamed export directory")
-		deps.Println("renamed export directory")
+		_, _ = deps.Println("renamed export directory")
 	}
 
 	return nil

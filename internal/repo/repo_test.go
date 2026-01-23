@@ -235,9 +235,9 @@ func TestListTracked(t *testing.T) {
 
 			// Override HOME for this test
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			got, err := ListTracked()
@@ -313,9 +313,9 @@ func TestTrack(t *testing.T) {
 
 			// Override HOME for this test
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			// Track the repo
@@ -391,9 +391,9 @@ func TestUntrack(t *testing.T) {
 
 			// Override HOME for this test
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			// Untrack the repo
@@ -458,9 +458,9 @@ func TestIsTracked(t *testing.T) {
 
 			// Override HOME for this test
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			got, err := IsTracked(tt.checkID)

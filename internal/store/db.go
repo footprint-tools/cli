@@ -34,7 +34,7 @@ func Open(path string) (*sql.DB, error) {
 		}
 
 		if err = conn.Ping(); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			singletonMu.Lock()
 			openError = err
 			singletonMu.Unlock()
@@ -45,7 +45,7 @@ func Open(path string) (*sql.DB, error) {
 		setDBPermissions(path)
 
 		if err = migrations.Run(conn); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			singletonMu.Lock()
 			openError = err
 			singletonMu.Unlock()

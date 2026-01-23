@@ -19,7 +19,7 @@ func newTestDB(t *testing.T) *sql.DB {
 	require.NoError(t, err, "failed to open in-memory database")
 
 	t.Cleanup(func() {
-		db.Close()
+		_ = db.Close()
 	})
 
 	err = migrations.Run(db)

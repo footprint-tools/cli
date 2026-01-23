@@ -16,7 +16,7 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		current = style.ResolveThemeName("default")
 	}
 
-	deps.Println("Available themes (* = current)\n")
+	_, _ = deps.Println("Available themes (* = current)\n")
 
 	for _, name := range deps.ThemeNames {
 		marker := "  "
@@ -27,10 +27,10 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		theme := deps.Themes[name]
 		preview := renderColorPreview(theme)
 
-		deps.Printf("%s%-14s  %s\n", marker, name, preview)
+		_, _ = deps.Printf("%s%-14s  %s\n", marker, name, preview)
 	}
 
-	deps.Println("\nUse 'fp theme set <name>' or 'fp theme pick' to change")
+	_, _ = deps.Println("\nUse 'fp theme set <name>' or 'fp theme pick' to change")
 
 	return nil
 }

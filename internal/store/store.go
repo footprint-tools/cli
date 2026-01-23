@@ -29,14 +29,14 @@ func New(path string) (*Store, error) {
 	}
 
 	if err = db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
 	setDBPermissions(path)
 
 	if err = migrations.Run(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
@@ -173,7 +173,7 @@ func (s *Store) List(filter domain.EventFilter) ([]domain.RepoEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []domain.RepoEvent
 
@@ -252,7 +252,7 @@ func (s *Store) ListSince(id int64) ([]domain.RepoEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []domain.RepoEvent
 

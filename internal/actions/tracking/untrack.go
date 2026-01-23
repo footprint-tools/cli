@@ -53,12 +53,12 @@ func untrack(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	if !removed {
 		log.Debug("untrack: repo was not tracked")
-		deps.Printf("repository not tracked: %s\n", id)
+		_, _ = deps.Printf("repository not tracked: %s\n", id)
 		return nil
 	}
 
 	log.Info("untrack: stopped tracking %s", id)
-	deps.Printf("untracked %s\n", id)
+	_, _ = deps.Printf("untracked %s\n", id)
 	return nil
 }
 
@@ -73,11 +73,11 @@ func untrackByID(idStr string, deps Deps) error {
 
 	if !removed {
 		log.Debug("untrack: repo was not tracked (id=%s)", id)
-		deps.Printf("repository not tracked: %s\n", id)
+		_, _ = deps.Printf("repository not tracked: %s\n", id)
 		return nil
 	}
 
 	log.Info("untrack: stopped tracking %s", id)
-	deps.Printf("untracked %s\n", id)
+	_, _ = deps.Printf("untracked %s\n", id)
 	return nil
 }

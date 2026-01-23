@@ -51,25 +51,25 @@ func status(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if isRemoteTracked {
-		deps.Printf("tracked %s\n", remoteID)
+		_, _ = deps.Printf("tracked %s\n", remoteID)
 		return nil
 	}
 
 	if isLocalTracked {
-		deps.Printf("tracked %s\n", localID)
+		_, _ = deps.Printf("tracked %s\n", localID)
 
 		if remoteID != "" && localID != remoteID {
-			deps.Printf("remote detected %s\n", remoteID)
-			deps.Println("run 'fp adopt' to update identity")
+			_, _ = deps.Printf("remote detected %s\n", remoteID)
+			_, _ = deps.Println("run 'fp adopt' to update identity")
 		}
 
 		return nil
 	}
 
 	if remoteID != "" {
-		deps.Printf("not tracked %s\n", remoteID)
+		_, _ = deps.Printf("not tracked %s\n", remoteID)
 	} else {
-		deps.Printf("not tracked %s\n", localID)
+		_, _ = deps.Printf("not tracked %s\n", localID)
 	}
 
 	return nil

@@ -19,7 +19,7 @@ func ReadLines() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Ensure correct permissions if file already existed
 	if err := os.Chmod(configPath, 0600); err != nil {

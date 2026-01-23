@@ -21,11 +21,11 @@ func setTheme(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 
 	// Validate theme exists
 	if _, ok := deps.Themes[themeName]; !ok {
-		deps.Printf("%s Unknown theme: %s\n", style.Error("error:"), themeName)
-		deps.Println("")
-		deps.Println("Available themes:")
+		_, _ = deps.Printf("%s Unknown theme: %s\n", style.Error("error:"), themeName)
+		_, _ = deps.Println("")
+		_, _ = deps.Println("Available themes:")
 		for _, name := range deps.ThemeNames {
-			deps.Printf("  %s\n", name)
+			_, _ = deps.Printf("  %s\n", name)
 		}
 		return fmt.Errorf("unknown theme: %s", themeName)
 	}
@@ -41,7 +41,7 @@ func setTheme(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		return err
 	}
 
-	deps.Printf("Theme set to %s\n", style.Success(themeName))
+	_, _ = deps.Printf("Theme set to %s\n", style.Success(themeName))
 
 	return nil
 }

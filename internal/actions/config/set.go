@@ -21,7 +21,7 @@ func set(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 
 	// Warn if key is not a recognized config key
 	if !domain.IsValidConfigKey(key) {
-		deps.Printf("warning: '%s' is not a recognized config key\n", key)
+		_, _ = deps.Printf("warning: '%s' is not a recognized config key\n", key)
 	}
 
 	lines, err := deps.ReadLines()
@@ -47,7 +47,7 @@ func set(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		action = "updated"
 	}
 
-	deps.Printf("%s %s=%s\n", action, key, value)
+	_, _ = deps.Printf("%s %s=%s\n", action, key, value)
 
 	return nil
 }

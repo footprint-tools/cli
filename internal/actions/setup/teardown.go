@@ -34,12 +34,12 @@ func teardown(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if !force {
-		deps.Println("fp will remove its git hooks")
-		deps.Println("previous hooks will be restored if available")
-		deps.Print("continue? [y/N]: ")
+		_, _ = deps.Println("fp will remove its git hooks")
+		_, _ = deps.Println("previous hooks will be restored if available")
+		_, _ = deps.Print("continue? [y/N]: ")
 
 		var resp string
-		deps.Scanln(&resp)
+		_, _ = deps.Scanln(&resp)
 		if resp != "y" && resp != "yes" {
 			return nil
 		}
@@ -49,6 +49,6 @@ func teardown(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		return err
 	}
 
-	deps.Println("fp teardown complete")
+	_, _ = deps.Println("fp teardown complete")
 	return nil
 }

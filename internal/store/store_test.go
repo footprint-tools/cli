@@ -18,7 +18,7 @@ func newTestStore(t *testing.T) *Store {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		db.Close()
+		_ = db.Close()
 	})
 
 	err = migrations.Run(db)

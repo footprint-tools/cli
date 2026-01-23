@@ -49,12 +49,12 @@ func track(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	if !added {
 		log.Debug("track: repo already tracked")
-		deps.Printf("already tracking %s\n", id)
+		_, _ = deps.Printf("already tracking %s\n", id)
 		return nil
 	}
 
 	log.Info("track: now tracking %s", id)
-	deps.Printf("tracking %s\n", id)
+	_, _ = deps.Printf("tracking %s\n", id)
 	return nil
 }
 

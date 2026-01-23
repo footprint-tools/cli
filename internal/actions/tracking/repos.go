@@ -17,7 +17,7 @@ func repos(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if len(trackedRepos) == 0 {
-		deps.Println("no tracked repositories")
+		_, _ = deps.Println("no tracked repositories")
 		return nil
 	}
 
@@ -26,7 +26,7 @@ func repos(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	})
 
 	for _, repoID := range trackedRepos {
-		deps.Println(repoID)
+		_, _ = deps.Println(repoID)
 	}
 
 	return nil

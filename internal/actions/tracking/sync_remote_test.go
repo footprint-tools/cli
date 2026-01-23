@@ -197,13 +197,13 @@ func TestRenameExportDir_NewDirAlreadyExists(t *testing.T) {
 	newID := repodomain.RepoID("github.com/user/repo")
 
 	reposDir := filepath.Join(baseDir, "repos")
-	os.MkdirAll(reposDir, 0700)
+	require.NoError(t, os.MkdirAll(reposDir, 0700))
 
 	// Create both old and new dirs
 	oldDir := filepath.Join(reposDir, oldID.ToFilesystemSafe())
 	newDir := filepath.Join(reposDir, newID.ToFilesystemSafe())
-	os.MkdirAll(oldDir, 0700)
-	os.MkdirAll(newDir, 0700)
+	require.NoError(t, os.MkdirAll(oldDir, 0700))
+	require.NoError(t, os.MkdirAll(newDir, 0700))
 
 	// Can't use renameExportDir directly because it uses paths.ExportRepoDir()
 	// So we test the logic: if new exists, should not rename

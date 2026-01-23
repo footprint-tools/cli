@@ -130,7 +130,7 @@ func TestWriteCSVSorted_CreatesFileWithHeader(t *testing.T) {
 	// Verify file exists and has header
 	file, err := os.Open(path)
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	header, err := reader.Read()
@@ -156,7 +156,7 @@ func TestWriteCSVSorted_SortsByAuthoredAt(t *testing.T) {
 	// Read and verify order
 	file, err := os.Open(path)
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	all, err := reader.ReadAll()
@@ -311,7 +311,7 @@ func TestExportAllEvents_MultipleReposInSameFile(t *testing.T) {
 
 	file, err := os.Open(filepath.Join(exportDir, "commits.csv"))
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -371,7 +371,7 @@ func TestExportAllEvents_EventsAreSortedByAuthoredAt(t *testing.T) {
 
 	file, err := os.Open(filepath.Join(exportDir, "commits.csv"))
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -441,7 +441,7 @@ func TestExportAllEvents_YearBoundary(t *testing.T) {
 
 	file2024, err := os.Open(filepath.Join(exportDir, "commits-2024.csv"))
 	require.NoError(t, err)
-	defer file2024.Close()
+	defer func() { _ = file2024.Close() }()
 
 	reader2024 := csv.NewReader(file2024)
 	records2024, err := reader2024.ReadAll()
@@ -451,7 +451,7 @@ func TestExportAllEvents_YearBoundary(t *testing.T) {
 
 	file2025, err := os.Open(filepath.Join(exportDir, "commits.csv"))
 	require.NoError(t, err)
-	defer file2025.Close()
+	defer func() { _ = file2025.Close() }()
 
 	reader2025 := csv.NewReader(file2025)
 	records2025, err := reader2025.ReadAll()
@@ -505,7 +505,7 @@ func TestExportAllEvents_PreservesExistingRecords(t *testing.T) {
 	// Verify both commits are present
 	file, err := os.Open(filepath.Join(exportDir, "commits.csv"))
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -566,7 +566,7 @@ func TestExportAllEvents_ReplacesDuplicates(t *testing.T) {
 	// Verify only one record exists and it's the newer one
 	file, err := os.Open(filepath.Join(exportDir, "commits.csv"))
 	require.NoError(t, err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -605,9 +605,9 @@ func TestDoExportWork_OfflineMode_ContinuesWhenPullFails(t *testing.T) {
 
 	// Create a temp database
 	dbPath := filepath.Join(dir, "test.db")
-	db, err := store.Open(dbPath)
+	db, err := store.Open(dbPath) //nolint:staticcheck // Using deprecated for test compatibility
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	err = store.Init(db)
 	require.NoError(t, err)
 

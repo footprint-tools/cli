@@ -19,7 +19,7 @@ func unset(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			return err
 		}
 
-		deps.Println("all config entries removed")
+		_, _ = deps.Println("all config entries removed")
 		return nil
 	}
 
@@ -43,6 +43,6 @@ func unset(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		return err
 	}
 
-	deps.Printf("unset %s\n", key)
+	_, _ = deps.Printf("unset %s\n", key)
 	return nil
 }

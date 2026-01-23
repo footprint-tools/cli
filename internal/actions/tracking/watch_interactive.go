@@ -27,7 +27,7 @@ func watchInteractive(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Ensure database is initialized
 	if err := deps.InitDB(db); err != nil {

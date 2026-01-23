@@ -8,8 +8,8 @@ import (
 
 func TestDisabledReturnsPlainText(t *testing.T) {
 	// Ensure no env vars interfere
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	Init(false, nil)
 
@@ -44,8 +44,8 @@ func TestDisabledReturnsPlainText(t *testing.T) {
 
 func TestEnabledReturnsStyledText(t *testing.T) {
 	// Ensure no env vars interfere
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	Init(true, nil)
 
@@ -80,8 +80,8 @@ func TestEnabledReturnsStyledText(t *testing.T) {
 }
 
 func TestNoColorEnvDisablesStyling(t *testing.T) {
-	os.Setenv("NO_COLOR", "1")
-	defer os.Unsetenv("NO_COLOR")
+	_ = os.Setenv("NO_COLOR", "1")
+	defer func() { _ = os.Unsetenv("NO_COLOR") }()
 
 	Init(true, nil) // Try to enable, but NO_COLOR should override
 
@@ -97,8 +97,8 @@ func TestNoColorEnvDisablesStyling(t *testing.T) {
 }
 
 func TestFPNoColorEnvDisablesStyling(t *testing.T) {
-	os.Setenv("FP_NO_COLOR", "1")
-	defer os.Unsetenv("FP_NO_COLOR")
+	_ = os.Setenv("FP_NO_COLOR", "1")
+	defer func() { _ = os.Unsetenv("FP_NO_COLOR") }()
 
 	Init(true, nil) // Try to enable, but FP_NO_COLOR should override
 
@@ -114,8 +114,8 @@ func TestFPNoColorEnvDisablesStyling(t *testing.T) {
 }
 
 func TestEnabledReturnsCorrectState(t *testing.T) {
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	Init(false, nil)
 	if Enabled() {
@@ -129,8 +129,8 @@ func TestEnabledReturnsCorrectState(t *testing.T) {
 }
 
 func TestEmptyStringHandling(t *testing.T) {
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	// Test with disabled
 	Init(false, nil)
@@ -339,8 +339,8 @@ func TestToUpperSnake(t *testing.T) {
 }
 
 func TestColorFunctions(t *testing.T) {
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	// Initialize with colors enabled
 	Init(true, nil)
@@ -371,8 +371,8 @@ func TestColorFunctions(t *testing.T) {
 }
 
 func TestColorFunctions_Disabled(t *testing.T) {
-	os.Unsetenv("NO_COLOR")
-	os.Unsetenv("FP_NO_COLOR")
+	_ = os.Unsetenv("NO_COLOR")
+	_ = os.Unsetenv("FP_NO_COLOR")
 
 	// Initialize with colors disabled
 	Init(false, nil)

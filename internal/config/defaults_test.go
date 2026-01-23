@@ -103,9 +103,9 @@ func TestGet(t *testing.T) {
 
 			// Override HOME
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			// Test Get
@@ -123,9 +123,9 @@ func TestGet_EmptyConfigFile(t *testing.T) {
 
 	// Override HOME but don't create config file
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempHome)
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 
 	// Should return default value
@@ -138,9 +138,9 @@ func TestGet_AllDefaults(t *testing.T) {
 	tempHome := t.TempDir()
 
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempHome)
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 
 	// Test all default keys exist
@@ -234,9 +234,9 @@ func TestGetAll(t *testing.T) {
 
 			// Override HOME
 			oldHome := os.Getenv("HOME")
-			os.Setenv("HOME", tempHome)
+			_ = os.Setenv("HOME", tempHome)
 			t.Cleanup(func() {
-				os.Setenv("HOME", oldHome)
+				_ = os.Setenv("HOME", oldHome)
 			})
 
 			// Test GetAll
@@ -259,9 +259,9 @@ func TestGetAll_NoConfigFile(t *testing.T) {
 
 	// Override HOME but don't create config file
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempHome)
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 
 	// Should return all defaults
@@ -287,9 +287,9 @@ func TestGetAll_OnlyReturnsDefaults(t *testing.T) {
 	tempHome := t.TempDir()
 
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempHome)
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 
 	got, err := GetAll()
@@ -318,9 +318,9 @@ func TestGetAll_MergesCorrectly(t *testing.T) {
 	require.NoError(t, err)
 
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	_ = os.Setenv("HOME", tempHome)
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 
 	got, err := GetAll()

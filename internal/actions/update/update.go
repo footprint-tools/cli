@@ -60,7 +60,7 @@ func installFromRelease(deps Dependencies, targetVersion string) error {
 	// Fetch release info
 	release, err := fetchRelease(deps, targetVersion)
 	if err != nil {
-		fmt.Fprintf(deps.Stdout, "No release found, trying go install...\n")
+		_, _ = fmt.Fprintf(deps.Stdout, "No release found, trying go install...\n")
 		if targetVersion == "" {
 			return fmt.Errorf("fp: could not fetch latest release: %w", err)
 		}
@@ -69,7 +69,7 @@ func installFromRelease(deps Dependencies, targetVersion string) error {
 
 	// Check if already up to date
 	if release.TagName == deps.CurrentVersion {
-		fmt.Fprintf(deps.Stdout, "Already at latest version %s\n", release.TagName)
+		_, _ = fmt.Fprintf(deps.Stdout, "Already at latest version %s\n", release.TagName)
 		return nil
 	}
 
@@ -84,17 +84,17 @@ func installFromRelease(deps Dependencies, targetVersion string) error {
 	}
 
 	if downloadURL == "" {
-		fmt.Fprintf(deps.Stdout, "No binary for %s/%s, trying go install...\n", runtime.GOOS, runtime.GOARCH)
+		_, _ = fmt.Fprintf(deps.Stdout, "No binary for %s/%s, trying go install...\n", runtime.GOOS, runtime.GOARCH)
 		return installFromSource(deps, release.TagName)
 	}
 
 	// Download and install
-	fmt.Fprintf(deps.Stdout, "Downloading %s...\n", release.TagName)
+	_, _ = fmt.Fprintf(deps.Stdout, "Downloading %s...\n", release.TagName)
 	if err := downloadAndInstall(deps, downloadURL); err != nil {
 		return fmt.Errorf("fp: failed to install: %w", err)
 	}
 
-	fmt.Fprintf(deps.Stdout, "Updated to %s\n", release.TagName)
+	_, _ = fmt.Fprintf(deps.Stdout, "Updated to %s\n", release.TagName)
 	return nil
 }
 
@@ -114,7 +114,7 @@ func fetchRelease(deps Dependencies, version string) (*githubRelease, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("release not found (status %d)", resp.StatusCode)
@@ -146,7 +146,7 @@ func downloadAndInstall(deps Dependencies, url string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("download failed (status %d)", resp.StatusCode)
@@ -157,19 +157,21 @@ func downloadAndInstall(deps Dependencies, url string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpArchive.Name())
+	defer func() { _ = os.Remove(tmpArchive.Name()) }()
 
 	if _, err := io.Copy(tmpArchive, resp.Body); err != nil {
 		return err
 	}
-	tmpArchive.Close()
+	if err := tmpArchive.Close(); err != nil {
+		return err
+	}
 
 	// Extract binary from archive
 	binary, err := extractBinary(tmpArchive.Name())
 	if err != nil {
 		return err
 	}
-	defer os.Remove(binary)
+	defer func() { _ = os.Remove(binary) }()
 
 	// Replace the current executable
 	// First, try to remove the old one (may fail if no write permission)
@@ -195,13 +197,13 @@ func extractBinary(archivePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gzr, err := gzip.NewReader(f)
 	if err != nil {
 		return "", err
 	}
-	defer gzr.Close()
+	defer func() { _ = gzr.Close() }()
 
 	tr := tar.NewReader(gzr)
 
@@ -222,11 +224,14 @@ func extractBinary(archivePath string) (string, error) {
 			}
 
 			if _, err := io.Copy(tmpBinary, tr); err != nil {
-				tmpBinary.Close()
-				os.Remove(tmpBinary.Name())
+				_ = tmpBinary.Close()
+				_ = os.Remove(tmpBinary.Name())
 				return "", err
 			}
-			tmpBinary.Close()
+			if err := tmpBinary.Close(); err != nil {
+				_ = os.Remove(tmpBinary.Name())
+				return "", err
+			}
 
 			return tmpBinary.Name(), nil
 		}
@@ -240,15 +245,15 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
 		return err
 	}
 
@@ -266,14 +271,14 @@ func installFromSource(deps Dependencies, version string) error {
 		version = "v" + version
 	}
 
-	fmt.Fprintf(deps.Stdout, "Building %s from source...\n", version)
+	_, _ = fmt.Fprintf(deps.Stdout, "Building %s from source...\n", version)
 
 	pkg := "github.com/" + repoOwner + "/" + repoName + "/cmd/fp@" + version
 	if err := deps.RunCommand("go", "install", pkg); err != nil {
 		return fmt.Errorf("fp: go install failed: %w", err)
 	}
 
-	fmt.Fprintf(deps.Stdout, "Installed %s (via go install)\n", version)
-	fmt.Fprintf(deps.Stdout, "Note: binary is in $GOPATH/bin or $HOME/go/bin\n")
+	_, _ = fmt.Fprintf(deps.Stdout, "Installed %s (via go install)\n", version)
+	_, _ = fmt.Fprintf(deps.Stdout, "Note: binary is in $GOPATH/bin or $HOME/go/bin\n")
 	return nil
 }

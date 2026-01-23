@@ -68,7 +68,7 @@ func launchBackfillAndWatch(args []string, flags *dispatchers.ParsedFlags, deps 
 		}
 	}()
 
-	deps.Println("Starting backfill in background...")
+	_, _ = deps.Println("Starting backfill in background...")
 
 	// Now run the watch command in foreground
 	return Log([]string{}, dispatchers.NewParsedFlags([]string{"--oneline"}))
@@ -137,7 +137,7 @@ func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) er
 		log.Error("backfill: failed to open database: %v", err)
 		return fmt.Errorf("could not open database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_ = deps.InitDB(db)
 
@@ -202,8 +202,8 @@ func doBackfillDryRun(args []string, flags *dispatchers.ParsedFlags, deps Deps) 
 		return fmt.Errorf("could not list commits: %w", err)
 	}
 
-	deps.Printf("Repository: %s\n", repoID)
-	deps.Printf("Found %d commits to import:\n\n", len(commits))
+	_, _ = deps.Printf("Repository: %s\n", repoID)
+	_, _ = deps.Printf("Found %d commits to import:\n\n", len(commits))
 
 	branchOverride := flags.String("--branch", "")
 
@@ -222,7 +222,7 @@ func doBackfillDryRun(args []string, flags *dispatchers.ParsedFlags, deps Deps) 
 			subject = subject[:47] + "..."
 		}
 
-		deps.Printf("  %.7s %s %s \"%s\"\n", c.Hash, c.AuthorDate[:10], branch, subject)
+		_, _ = deps.Printf("  %.7s %s %s \"%s\"\n", c.Hash, c.AuthorDate[:10], branch, subject)
 	}
 
 	return nil

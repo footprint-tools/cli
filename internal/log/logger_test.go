@@ -15,7 +15,7 @@ func TestLogger_BasicLogging(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Write messages at different levels
 	logger.Debug("debug message")
@@ -24,7 +24,7 @@ func TestLogger_BasicLogging(t *testing.T) {
 	logger.Error("error message")
 
 	// Close to flush
-	logger.Close()
+	_ = logger.Close()
 
 	// Read log file
 	content, err := os.ReadFile(logPath)
@@ -58,14 +58,14 @@ func TestLogger_LevelFiltering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.Debug("debug message")
 	logger.Info("info message")
 	logger.Warn("warning message")
 	logger.Error("error message")
 
-	logger.Close()
+	_ = logger.Close()
 
 	content, err := os.ReadFile(logPath)
 	if err != nil {
@@ -99,10 +99,10 @@ func TestLogger_FilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.Info("test message")
-	logger.Close()
+	_ = logger.Close()
 
 	// Check file permissions
 	info, err := os.Stat(logPath)
@@ -127,7 +127,7 @@ func TestLogger_DirectoryPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Check directory permissions
 	info, err := os.Stat(logDir)
@@ -153,7 +153,7 @@ func TestLogger_AppendMode(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 	logger1.Info("first message")
-	logger1.Close()
+	_ = logger1.Close()
 
 	// Second logger (should append)
 	logger2, err := New(logPath, LevelInfo)
@@ -161,7 +161,7 @@ func TestLogger_AppendMode(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 	logger2.Info("second message")
-	logger2.Close()
+	_ = logger2.Close()
 
 	// Read log file
 	content, err := os.ReadFile(logPath)
@@ -188,7 +188,7 @@ func TestLogger_Disabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	logger.Info("enabled message")
 	logger.SetEnabled(false)
@@ -196,7 +196,7 @@ func TestLogger_Disabled(t *testing.T) {
 	logger.SetEnabled(true)
 	logger.Info("enabled again")
 
-	logger.Close()
+	_ = logger.Close()
 
 	content, err := os.ReadFile(logPath)
 	if err != nil {
@@ -272,12 +272,12 @@ func TestLogger_Writer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	writer := logger.Writer(LevelInfo)
-	writer.Write([]byte("message from writer"))
+	_, _ = writer.Write([]byte("message from writer"))
 
-	logger.Close()
+	_ = logger.Close()
 
 	content, err := os.ReadFile(logPath)
 	if err != nil {
@@ -350,7 +350,7 @@ func TestGlobalLogger_WithLogger(t *testing.T) {
 	defaultLogger = logger
 	defer func() {
 		defaultLogger = savedLogger
-		logger.Close()
+		_ = logger.Close()
 	}()
 
 	// These should log to the file
@@ -397,7 +397,7 @@ func TestNew_ErrorCases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() failed for nested path: %v", err)
 	}
-	logger.Close()
+	_ = logger.Close()
 }
 
 func TestNew_MkdirAllError(t *testing.T) {
@@ -410,7 +410,7 @@ func TestNew_MkdirAllError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create file: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Try to create a log file inside the "file" (which should fail)
 	badLogPath := filepath.Join(filePath, "subdir", "test.log")

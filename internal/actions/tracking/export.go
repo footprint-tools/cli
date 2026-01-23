@@ -81,14 +81,14 @@ func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if len(events) == 0 {
-		deps.Println("No pending events to export")
+		_, _ = deps.Println("No pending events to export")
 		return nil
 	}
 
 	if dryRun {
-		deps.Printf("Would export %d events:\n", len(events))
+		_, _ = deps.Printf("Would export %d events:\n", len(events))
 		for _, e := range events {
-			deps.Printf("  %.7s %s (%s)\n", e.Commit, e.Branch, e.RepoID)
+			_, _ = deps.Printf("  %.7s %s (%s)\n", e.Commit, e.Branch, e.RepoID)
 		}
 		return nil
 	}
@@ -99,7 +99,7 @@ func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			return err
 		}
 		if !shouldExp {
-			deps.Println("Export interval not reached. Use --force to export anyway.")
+			_, _ = deps.Println("Export interval not reached. Use --force to export anyway.")
 			return nil
 		}
 	}
@@ -110,13 +110,13 @@ func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if count == 0 {
-		deps.Println("No events were exported")
+		_, _ = deps.Println("No events were exported")
 		return nil
 	}
 
-	deps.Printf("Exported %d events\n", count)
+	_, _ = deps.Printf("Exported %d events\n", count)
 	if pushed {
-		deps.Println("Pushed to remote")
+		_, _ = deps.Println("Pushed to remote")
 	}
 
 	return nil
@@ -305,7 +305,7 @@ func loadCSVRecords(csvPath string) map[string][]string {
 	if err != nil {
 		return records // File doesn't exist yet, return empty map
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	r := csv.NewReader(file)
 	lines, err := r.ReadAll()
@@ -397,7 +397,7 @@ func writeCSVSorted(csvPath string, records map[string][]string) error {
 
 	w := csv.NewWriter(file)
 	if err := w.Write(csvHeader); err != nil {
-		file.Close()
+		_ = file.Close()
 		return err
 	}
 	expectedFields := len(csvHeader)
@@ -407,19 +407,19 @@ func writeCSVSorted(csvPath string, records map[string][]string) error {
 			continue
 		}
 		if err := w.Write(line); err != nil {
-			file.Close()
+			_ = file.Close()
 			return err
 		}
 	}
 	w.Flush()
 	if err := w.Error(); err != nil {
-		file.Close()
+		_ = file.Close()
 		return err
 	}
 
 	// Sync to ensure data is written to disk
 	if err := file.Sync(); err != nil {
-		file.Close()
+		_ = file.Close()
 		return fmt.Errorf("sync CSV file: %w", err)
 	}
 

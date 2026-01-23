@@ -18,7 +18,7 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	// Only show visible (non-hidden) keys
 	for _, key := range domain.VisibleConfigKeys() {
 		if value, exists := configMap[key.Name]; exists {
-			deps.Printf("%s=%s\n", key.Name, value)
+			_, _ = deps.Printf("%s=%s\n", key.Name, value)
 		}
 	}
 

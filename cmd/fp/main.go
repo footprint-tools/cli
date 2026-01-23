@@ -22,7 +22,7 @@ import (
 func main() {
 	// Initialize logger based on config (must read config before CLI setup)
 	initLogger()
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	args := os.Args[1:]
 

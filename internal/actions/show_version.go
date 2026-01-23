@@ -7,6 +7,6 @@ func ShowVersion(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func showVersion(_ []string, _ *dispatchers.ParsedFlags, deps actionDependencies) error {
-	deps.Printf("fp version %v\n", deps.Version())
+	_, _ = deps.Printf("fp version %v\n", deps.Version())
 	return nil
 }

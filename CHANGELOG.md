@@ -8,13 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.0.10] - 2026-01-23
+
+### Fixed
+- Fixed all golangci-lint errcheck issues across the codebase
+- Properly handle return values from Printf, Println, Close, Setenv calls
+- Migrated deprecated bubbletea mouse API to new Button/Action pattern
+
+### Changed
+- Removed docs folder from version control (kept locally for development)
+
+---
+
 ## [0.0.9] - 2026-01-22
 
 ### Added
 - Auto-update check: notifies when new version is available (non-blocking)
 - `fp update` command to download and install latest version
 - GitHub Actions workflows for CI and automated releases
-- Release documentation in `docs/releasing.md`
 - Interactive help browser with `fp help -i` flag (replaces `help-browser` command)
 - Command suggestions for typos using Levenshtein distance
 - Border color in theme system for interactive UI elements
@@ -136,7 +147,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `config` subcommands: `get`, `set`, `unset --all`, `list`
 - `version` command with build-time injection
 
-[Unreleased]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.9...HEAD
+[Unreleased]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.10...HEAD
+[0.0.10]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.6...v0.0.7

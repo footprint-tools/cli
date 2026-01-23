@@ -238,8 +238,11 @@ func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Calculate regions
 	statsWidth, eventsWidth, drawerWidth := m.calculateWidths()
 
-	switch msg.Type {
-	case tea.MouseLeft:
+	switch msg.Button {
+	case tea.MouseButtonLeft:
+		if msg.Action != tea.MouseActionPress {
+			return m, nil
+		}
 		// If drawer is open and click is outside drawer, close it
 		if m.drawerOpen {
 			drawerStart := statsWidth + eventsWidth
@@ -264,12 +267,12 @@ func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case tea.MouseWheelUp:
+	case tea.MouseButtonWheelUp:
 		if msg.X >= statsWidth && msg.X < statsWidth+eventsWidth+drawerWidth {
 			m.moveCursor(-1)
 		}
 
-	case tea.MouseWheelDown:
+	case tea.MouseButtonWheelDown:
 		if msg.X >= statsWidth && msg.X < statsWidth+eventsWidth+drawerWidth {
 			m.moveCursor(1)
 		}

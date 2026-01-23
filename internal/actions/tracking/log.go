@@ -101,9 +101,9 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			for _, event := range events {
 				if enrich {
 					meta := git.GetCommitMetadata(event.RepoPath, event.Commit)
-					fmt.Fprintln(os.Stdout, FormatEventEnriched(event, meta, oneline))
+					_, _ = fmt.Fprintln(os.Stdout, FormatEventEnriched(event, meta, oneline))
 				} else {
-					fmt.Fprintln(os.Stdout, FormatEvent(event, oneline))
+					_, _ = fmt.Fprintln(os.Stdout, FormatEvent(event, oneline))
 				}
 				// Note: int64 overflow is not a practical concern (max ~9 quintillion).
 				// A negative ID would indicate database corruption.

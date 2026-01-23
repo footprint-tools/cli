@@ -1,7 +1,6 @@
 package dispatchers
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,10 +9,6 @@ import (
 // Mock action functions for testing
 func mockAction(args []string, flags *ParsedFlags) error {
 	return nil
-}
-
-func mockErrorAction(args []string, flags *ParsedFlags) error {
-	return errors.New("mock error")
 }
 
 // Helper to create a simple tree for testing

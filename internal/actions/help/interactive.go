@@ -230,9 +230,7 @@ func (m *model) filterItems() {
 		item := m.allItems[i]
 		if item.IsCategory {
 			// Store category, will add if it has matching items
-			if currentCategory != nil && hasItemsInCategory {
-				// Previous category had items, it's already added
-			}
+			// Note: Previous category with items is already added via addCategoryAndItem
 			currentCategory = &m.allItems[i]
 			hasItemsInCategory = false
 			continue
@@ -506,8 +504,11 @@ func (m *model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Check if click is in the main area (between header and footer)
 	inMainArea := msg.Y >= m.headerHeight && msg.Y < m.height-footerHeight
 
-	switch msg.Type {
-	case tea.MouseLeft:
+	switch msg.Button {
+	case tea.MouseButtonLeft:
+		if msg.Action != tea.MouseActionPress {
+			return *m, nil
+		}
 		if !inMainArea {
 			return *m, nil
 		}
@@ -533,7 +534,7 @@ func (m *model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.focusSidebar = false
 		}
 
-	case tea.MouseWheelUp:
+	case tea.MouseButtonWheelUp:
 		if !inMainArea {
 			return *m, nil
 		}
@@ -554,7 +555,7 @@ func (m *model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case tea.MouseWheelDown:
+	case tea.MouseButtonWheelDown:
 		if !inMainArea {
 			return *m, nil
 		}

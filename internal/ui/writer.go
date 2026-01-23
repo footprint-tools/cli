@@ -94,26 +94,26 @@ func (w *Writer) Println(args ...any) (int, error) {
 func (w *Writer) Pager(content string) {
 	// 1. Pager disabled
 	if w.pagerDisabled {
-		fmt.Fprint(w.out, content)
+		_, _ = fmt.Fprint(w.out, content)
 		return
 	}
 
 	// 2. Not a TTY (check if output supports Fd())
 	if f, ok := w.out.(*os.File); ok {
 		if !term.IsTerminal(int(f.Fd())) {
-			fmt.Fprint(w.out, content)
+			_, _ = fmt.Fprint(w.out, content)
 			return
 		}
 	} else {
 		// Non-file outputs (like bytes.Buffer) - just print
-		fmt.Fprint(w.out, content)
+		_, _ = fmt.Fprint(w.out, content)
 		return
 	}
 
 	// 3. Pager override flag
 	if w.pagerOverride != "" {
 		if w.isBypassPager(w.pagerOverride) {
-			fmt.Fprint(w.out, content)
+			_, _ = fmt.Fprint(w.out, content)
 			return
 		}
 		w.runPagerCmd(w.pagerOverride, content)
@@ -124,7 +124,7 @@ func (w *Writer) Pager(content string) {
 	if w.configGetter != nil {
 		if configPager, ok := w.configGetter("pager"); ok && configPager != "" {
 			if w.isBypassPager(configPager) {
-				fmt.Fprint(w.out, content)
+				_, _ = fmt.Fprint(w.out, content)
 				return
 			}
 			w.runPagerCmd(configPager, content)
@@ -136,7 +136,7 @@ func (w *Writer) Pager(content string) {
 	if w.envGetter != nil {
 		if envPager := w.envGetter("PAGER"); envPager != "" {
 			if w.isBypassPager(envPager) {
-				fmt.Fprint(w.out, content)
+				_, _ = fmt.Fprint(w.out, content)
 				return
 			}
 			w.runPagerCmd(envPager, content)
@@ -155,7 +155,7 @@ func (w *Writer) isBypassPager(cmd string) bool {
 func (w *Writer) runPagerCmd(pagerCmd string, content string) {
 	parts := strings.Fields(pagerCmd)
 	if len(parts) == 0 {
-		fmt.Fprint(w.out, content)
+		_, _ = fmt.Fprint(w.out, content)
 		return
 	}
 	w.runPager(parts[0], parts[1:], content)
@@ -168,7 +168,7 @@ func (w *Writer) runPager(pager string, args []string, content string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Fprint(w.out, content)
+		_, _ = fmt.Fprint(w.out, content)
 	}
 }
 

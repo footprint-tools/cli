@@ -52,12 +52,12 @@ func setup(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if backedUp > 0 && !force {
-		deps.Println("fp detected existing git hooks")
-		deps.Println("they will be backed up and replaced")
-		deps.Print("continue? [y/N]: ")
+		_, _ = deps.Println("fp detected existing git hooks")
+		_, _ = deps.Println("they will be backed up and replaced")
+		_, _ = deps.Print("continue? [y/N]: ")
 
 		var resp string
-		deps.Scanln(&resp)
+		_, _ = deps.Scanln(&resp)
 		if resp != "y" && resp != "yes" {
 			return nil
 		}
@@ -74,14 +74,14 @@ func setup(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if backedUp > 0 {
-		deps.Printf("Installed %d %s hooks (%d backed up)\n", len(hooks.ManagedHooks), location, backedUp)
+		_, _ = deps.Printf("Installed %d %s hooks (%d backed up)\n", len(hooks.ManagedHooks), location, backedUp)
 	} else {
-		deps.Printf("Installed %d %s hooks\n", len(hooks.ManagedHooks), location)
+		_, _ = deps.Printf("Installed %d %s hooks\n", len(hooks.ManagedHooks), location)
 	}
-	deps.Printf("  %s\n", strings.Join(hooks.ManagedHooks, ", "))
+	_, _ = deps.Printf("  %s\n", strings.Join(hooks.ManagedHooks, ", "))
 
-	deps.Println("")
-	deps.Println("Run 'fp track' in a repo to start recording activity")
+	_, _ = deps.Println("")
+	_, _ = deps.Println("Run 'fp track' in a repo to start recording activity")
 
 	return nil
 }

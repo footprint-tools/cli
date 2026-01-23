@@ -16,7 +16,7 @@ func TestOpenFresh(t *testing.T) {
 		db, err := OpenFresh(dbPath)
 		require.NoError(t, err)
 		require.NotNil(t, db)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Verify database file was created
 		_, err = os.Stat(dbPath)
@@ -33,7 +33,7 @@ func TestOpenFresh(t *testing.T) {
 		db, err := OpenFresh(":memory:")
 		require.NoError(t, err)
 		require.NotNil(t, db)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Verify migrations were run
 		var count int
@@ -48,7 +48,7 @@ func TestOpenFresh(t *testing.T) {
 
 		db, err := OpenFresh(dbPath)
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Check file permissions
 		info, err := os.Stat(dbPath)
@@ -106,8 +106,8 @@ func TestResetSingleton(t *testing.T) {
 	require.NotSame(t, db1, db2)
 
 	// Cleanup
-	db1.Close()
-	db2.Close()
+	_ = db1.Close()
+	_ = db2.Close()
 	ResetSingleton()
 }
 
@@ -120,7 +120,7 @@ func TestOpen_RunsMigrations(t *testing.T) {
 
 	db, err := Open(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify migrations were run by checking for tables
 	tables := []string{"schema_migrations", "event_status", "event_source", "repo_events"}

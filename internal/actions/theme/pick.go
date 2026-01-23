@@ -68,7 +68,7 @@ func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 
 	if fm.chosen != "" {
 		if fm.chosen == current {
-			deps.Printf("\nTheme %s is already active\n", style.Info(fm.chosen))
+			_, _ = deps.Printf("\nTheme %s is already active\n", style.Info(fm.chosen))
 			return nil
 		}
 		lines, err := deps.ReadLines()
@@ -79,12 +79,12 @@ func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		if err := deps.WriteLines(lines); err != nil {
 			return err
 		}
-		deps.Printf("\nTheme set to %s\n", style.Success(fm.chosen))
+		_, _ = deps.Printf("\nTheme set to %s\n", style.Success(fm.chosen))
 		return nil
 	}
 
 	if fm.cancelled {
-		deps.Println("\nCancelled")
+		_, _ = deps.Println("\nCancelled")
 	}
 
 	return nil

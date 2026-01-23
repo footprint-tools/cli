@@ -13,9 +13,9 @@ func setupTempHome(t *testing.T) string {
 	t.Helper()
 	tempHome := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", tempHome)
+	require.NoError(t, os.Setenv("HOME", tempHome))
 	t.Cleanup(func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 	})
 	return tempHome
 }

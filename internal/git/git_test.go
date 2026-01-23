@@ -199,7 +199,7 @@ func TestHeadCommit(t *testing.T) {
 	// Need to be inside the repo for HeadCommit() to work (it doesn't take a path)
 	oldDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	err = os.Chdir(repo)
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestCurrentBranch(t *testing.T) {
 	// Need to be inside the repo
 	oldDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	err = os.Chdir(repo)
 	require.NoError(t, err)
@@ -247,7 +247,7 @@ func TestCommitDiffStats(t *testing.T) {
 	// Need to be inside the repo
 	oldDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	err = os.Chdir(repo)
 	require.NoError(t, err)

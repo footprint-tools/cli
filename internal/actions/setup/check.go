@@ -37,15 +37,15 @@ func check(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		scope = "global"
 	}
 
-	deps.Printf("hooks scope: %s\n\n", scope)
+	_, _ = deps.Printf("hooks scope: %s\n\n", scope)
 
 	status := deps.HooksStatus(hooksPath)
 
 	for hook, installed := range status {
 		if installed {
-			deps.Printf("%-14s installed\n", hook)
+			_, _ = deps.Printf("%-14s installed\n", hook)
 		} else {
-			deps.Printf("%-14s missing\n", hook)
+			_, _ = deps.Printf("%-14s missing\n", hook)
 		}
 	}
 

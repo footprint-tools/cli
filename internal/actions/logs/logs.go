@@ -28,7 +28,7 @@ func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	// Check if log file exists
 	info, err := deps.Stat(logPath)
 	if os.IsNotExist(err) {
-		deps.Println(style.Muted("No log file found at " + logPath))
+		_, _ = deps.Println(style.Muted("No log file found at " + logPath))
 		return nil
 	}
 	if err != nil {
@@ -36,7 +36,7 @@ func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if info.Size() == 0 {
-		deps.Println(style.Muted("Log file is empty"))
+		_, _ = deps.Println(style.Muted("Log file is empty"))
 		return nil
 	}
 
@@ -66,7 +66,7 @@ func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	for _, line := range lines[start:] {
-		deps.Println(colorizeLogLine(line))
+		_, _ = deps.Println(colorizeLogLine(line))
 	}
 
 	return nil
@@ -84,7 +84,7 @@ func tail(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Seek to end of file
 	_, err = file.Seek(0, io.SeekEnd)
@@ -92,8 +92,8 @@ func tail(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		return fmt.Errorf("seek log file: %w", err)
 	}
 
-	deps.Println(style.Muted("Following logs at " + logPath + " (Ctrl+C to stop)"))
-	deps.Println("")
+	_, _ = deps.Println(style.Muted("Following logs at " + logPath + " (Ctrl+C to stop)"))
+	_, _ = deps.Println("")
 
 	// Setup signal handling for clean shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -154,7 +154,7 @@ func clear(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		return fmt.Errorf("clear log file: %w", err)
 	}
 
-	deps.Println(style.Success("Log file cleared"))
+	_, _ = deps.Println(style.Success("Log file cleared"))
 	return nil
 }
 

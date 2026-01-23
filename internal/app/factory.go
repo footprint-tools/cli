@@ -109,10 +109,10 @@ func NewForTesting() *domain.Application {
 // Close cleans up application resources.
 func Close(app *domain.Application) error {
 	if app.Logger != nil {
-		app.Logger.Close()
+		_ = app.Logger.Close()
 	}
 	if app.Store != nil {
-		app.Store.Close()
+		_ = app.Store.Close()
 	}
 	return nil
 }

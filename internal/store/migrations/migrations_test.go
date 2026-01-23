@@ -33,7 +33,7 @@ func TestRunIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// First run
 	if err := migrations.Run(db); err != nil {
@@ -65,7 +65,7 @@ func TestPending(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	all, _ := migrations.Load()
 
@@ -79,7 +79,9 @@ func TestPending(t *testing.T) {
 	}
 
 	// After run: none pending
-	migrations.Run(db)
+	if err := migrations.Run(db); err != nil {
+		t.Fatalf("run: %v", err)
+	}
 	pending, _ = migrations.Pending(db)
 	if len(pending) != 0 {
 		t.Errorf("expected 0 pending, got %d", len(pending))
@@ -91,7 +93,7 @@ func TestTablesCreated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := migrations.Run(db); err != nil {
 		t.Fatalf("run: %v", err)
@@ -116,7 +118,7 @@ func TestRedundantColumnsRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := migrations.Run(db); err != nil {
 		t.Fatalf("run: %v", err)

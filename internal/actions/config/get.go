@@ -21,6 +21,6 @@ func get(args []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		return usage.InvalidConfigKey(key)
 	}
 
-	deps.Println(value)
+	_, _ = deps.Println(value)
 	return nil
 }

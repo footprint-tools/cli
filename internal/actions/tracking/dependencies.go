@@ -72,9 +72,9 @@ func DefaultDeps() Deps {
 		IsTracked:   repodomain.IsTracked,
 		ListTracked: repodomain.ListTracked,
 
-		DBPath:      store.DBPath,
-		OpenDB:      store.Open,
-		InitDB:      store.Init,
+		DBPath: store.DBPath,
+		OpenDB: store.Open, //nolint:staticcheck // TODO: refactor to use store.New() with *Store interface
+		InitDB: store.Init,
 		InsertEvent: store.InsertEvent,
 		ListEvents:  store.ListEvents,
 

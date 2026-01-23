@@ -19,7 +19,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	log.Debug("record: starting (source=%s, fromHook=%v)", deps.Getenv("FP_SOURCE"), isFromHook)
 
 	if !isFromHook && !manual {
-		deps.Println("Note: fp record is usually executed automatically by git hooks.")
+		_, _ = deps.Println("Note: fp record is usually executed automatically by git hooks.")
 	}
 
 	// Show errors when running manually or with --verbose
@@ -27,7 +27,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	if !deps.GitIsAvailable() {
 		if showErrors {
-			deps.Println("git not available")
+			_, _ = deps.Println("git not available")
 		}
 		return nil
 	}
@@ -35,7 +35,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	repoRoot, err := deps.RepoRoot(".")
 	if err != nil {
 		if showErrors {
-			deps.Println("not in a git repository")
+			_, _ = deps.Println("not in a git repository")
 		}
 		return nil
 	}
@@ -45,7 +45,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	repoID, err := deps.DeriveID(remoteURL, repoRoot)
 	if err != nil {
 		if showErrors {
-			deps.Println("could not derive repo id")
+			_, _ = deps.Println("could not derive repo id")
 		}
 		return nil
 	}
@@ -58,7 +58,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			log.Warn("fp record: repository not tracked but hooks are active (repo=%s, path=%s)", repoID, repoRoot)
 		}
 		if showErrors {
-			deps.Println("repository not tracked")
+			_, _ = deps.Println("repository not tracked")
 		}
 		return nil
 	}
@@ -66,7 +66,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	commit, err := deps.HeadCommit()
 	if err != nil {
 		if showErrors {
-			deps.Println("could not read HEAD commit")
+			_, _ = deps.Println("could not read HEAD commit")
 		}
 		return nil
 	}
@@ -79,7 +79,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		// Critical error: log it always
 		log.Error("fp record: failed to open database: %v (repo=%s, commit=%.7s)", err, repoID, commit)
 		if showErrors {
-			deps.Println("could not open store db")
+			_, _ = deps.Println("could not open store db")
 		}
 		return nil
 	}
@@ -89,7 +89,7 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		// Critical error: DB initialization failed
 		log.Error("fp record: failed to initialize database: %v (repo=%s, commit=%.7s)", err, repoID, commit)
 		if showErrors {
-			deps.Printf("failed to initialize database: %v\n", err)
+			_, _ = deps.Printf("failed to initialize database: %v\n", err)
 		}
 		return nil
 	}
@@ -115,9 +115,9 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	if showErrors {
 		if err != nil {
-			deps.Printf("failed to record event: %v\n", err)
+			_, _ = deps.Printf("failed to record event: %v\n", err)
 		} else {
-			deps.Printf(
+			_, _ = deps.Printf(
 				"recorded %.7s on %s (%s) [%s]\n",
 				commit,
 				branch,
