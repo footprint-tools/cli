@@ -287,3 +287,75 @@ func TestInsertEvent_AllSources(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkOrphanedByRepoID(t *testing.T) {
+	db := newTestDB(t)
+
+	// Insert pending events
+	events := []RepoEvent{
+		{RepoID: "github.com/user/repo1", RepoPath: "/path/1", Commit: "abc123", Branch: "main", Timestamp: time.Now(), Status: StatusPending, Source: SourcePostCommit},
+		{RepoID: "github.com/user/repo1", RepoPath: "/path/1", Commit: "def456", Branch: "main", Timestamp: time.Now(), Status: StatusExported, Source: SourcePostCommit},
+		{RepoID: "github.com/user/repo2", RepoPath: "/path/2", Commit: "ghi789", Branch: "main", Timestamp: time.Now(), Status: StatusPending, Source: SourcePostCommit},
+	}
+	for _, e := range events {
+		require.NoError(t, InsertEvent(db, e))
+	}
+
+	// Mark repo1 as orphaned
+	count, err := MarkOrphanedByRepoID(db, "github.com/user/repo1")
+	require.NoError(t, err)
+	require.Equal(t, int64(1), count, "only pending events should be marked")
+
+	// Verify
+	var orphanedCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM repo_events WHERE status_id = ?", int(StatusOrphaned)).Scan(&orphanedCount)
+	require.NoError(t, err)
+	require.Equal(t, 1, orphanedCount)
+}
+
+func TestDeleteOrphanedEvents(t *testing.T) {
+	db := newTestDB(t)
+
+	// Insert events with different statuses
+	events := []RepoEvent{
+		{RepoID: "github.com/user/repo1", RepoPath: "/path/1", Commit: "abc123", Branch: "main", Timestamp: time.Now(), Status: StatusOrphaned, Source: SourcePostCommit},
+		{RepoID: "github.com/user/repo2", RepoPath: "/path/2", Commit: "def456", Branch: "main", Timestamp: time.Now(), Status: StatusPending, Source: SourcePostCommit},
+	}
+	for _, e := range events {
+		require.NoError(t, InsertEvent(db, e))
+	}
+
+	// Delete orphaned
+	count, err := DeleteOrphanedEvents(db)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), count)
+
+	// Verify only non-orphaned remains
+	var remaining int
+	err = db.QueryRow("SELECT COUNT(*) FROM repo_events").Scan(&remaining)
+	require.NoError(t, err)
+	require.Equal(t, 1, remaining)
+}
+
+func TestCountOrphanedEvents(t *testing.T) {
+	db := newTestDB(t)
+
+	// Initially empty
+	count, err := CountOrphanedEvents(db)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), count)
+
+	// Insert orphaned events
+	events := []RepoEvent{
+		{RepoID: "github.com/user/repo1", RepoPath: "/path/1", Commit: "abc123", Branch: "main", Timestamp: time.Now(), Status: StatusOrphaned, Source: SourcePostCommit},
+		{RepoID: "github.com/user/repo2", RepoPath: "/path/2", Commit: "def456", Branch: "main", Timestamp: time.Now(), Status: StatusOrphaned, Source: SourcePostCommit},
+		{RepoID: "github.com/user/repo3", RepoPath: "/path/3", Commit: "ghi789", Branch: "main", Timestamp: time.Now(), Status: StatusPending, Source: SourcePostCommit},
+	}
+	for _, e := range events {
+		require.NoError(t, InsertEvent(db, e))
+	}
+
+	count, err = CountOrphanedEvents(db)
+	require.NoError(t, err)
+	require.Equal(t, int64(2), count)
+}

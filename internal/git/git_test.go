@@ -241,40 +241,6 @@ func TestCurrentBranch(t *testing.T) {
 	require.Equal(t, "feature-branch", got)
 }
 
-func TestCommitDiffStats(t *testing.T) {
-	repo := newTestRepo(t)
-
-	// Need to be inside the repo
-	oldDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() { _ = os.Chdir(oldDir) }()
-
-	err = os.Chdir(repo)
-	require.NoError(t, err)
-
-	// Create a commit with known stats
-	err = os.WriteFile(filepath.Join(repo, "file1.txt"), []byte("line1\nline2\nline3\n"), 0644)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(repo, "file2.txt"), []byte("content\n"), 0644)
-	require.NoError(t, err)
-
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = repo
-	require.NoError(t, cmd.Run())
-
-	cmd = exec.Command("git", "commit", "-m", "Add files")
-	cmd.Dir = repo
-	require.NoError(t, cmd.Run())
-
-	stats, err := CommitDiffStats()
-	require.NoError(t, err)
-	// Stats may not be populated correctly in all git environments
-	// Just verify the function doesn't error
-	require.GreaterOrEqual(t, stats.FilesChanged, 0)
-	require.GreaterOrEqual(t, stats.Insertions, 0)
-	require.GreaterOrEqual(t, stats.Deletions, 0)
-}
-
 func TestParseNumstat(t *testing.T) {
 	tests := []struct {
 		input string
@@ -514,4 +480,245 @@ func TestGetBranchForCommit_NonExistent(t *testing.T) {
 	// Try to get branch for non-existent commit
 	branch := GetBranchForCommit(repo, "0000000000000000000000000000000000000000")
 	require.Empty(t, branch)
+}
+
+func TestCommitMessage(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	// Create a commit with known message
+	commitFile(t, repo, "test.txt", "hello")
+
+	msg, err := CommitMessage()
+	require.NoError(t, err)
+	require.Equal(t, "Add test.txt", msg)
+}
+
+func TestCommitAuthor(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	// Create a commit
+	commitFile(t, repo, "test.txt", "hello")
+
+	author, err := CommitAuthor()
+	require.NoError(t, err)
+	require.Equal(t, "Test User <test@example.com>", author)
+}
+
+func TestRepoHooksPath(t *testing.T) {
+	repo := newTestRepo(t)
+
+	hooksPath, err := RepoHooksPath(repo)
+	require.NoError(t, err)
+	require.NotEmpty(t, hooksPath)
+	require.True(t, strings.HasSuffix(hooksPath, "hooks"),
+		"hooks path should end with 'hooks': %s", hooksPath)
+}
+
+func TestRepoHooksPath_InvalidRepo(t *testing.T) {
+	nonRepo := t.TempDir()
+
+	_, err := RepoHooksPath(nonRepo)
+	require.Error(t, err)
+}
+
+func TestGlobalHooksPath(t *testing.T) {
+	// This should return something - either configured path or default
+	path, err := GlobalHooksPath()
+	require.NoError(t, err)
+	require.NotEmpty(t, path)
+}
+
+func TestDefaultHome(t *testing.T) {
+	home := defaultHome()
+	require.NotEmpty(t, home)
+
+	// Should be a valid directory
+	info, err := os.Stat(home)
+	require.NoError(t, err)
+	require.True(t, info.IsDir())
+}
+
+func TestIsValidCommitRef(t *testing.T) {
+	tests := []struct {
+		ref      string
+		expected bool
+	}{
+		// Valid refs
+		{"abc123def456", true},
+		{"HEAD", true},
+		{"main", true},
+		{"feature/branch-name", true},
+		{"0000000000000000000000000000000000000000", true},
+
+		// Invalid refs (injection attempts)
+		{"abc; rm -rf /", false},
+		{"test&echo", false},
+		{"test|cat", false},
+		{"$(whoami)", false},
+		{"`id`", false},
+		{"test'injection", false},
+		{"test\"injection", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.ref, func(t *testing.T) {
+			result := isValidCommitRef(tt.ref)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestNewProvider(t *testing.T) {
+	provider := NewProvider()
+	require.NotNil(t, provider)
+}
+
+func TestProvider_IsAvailable(t *testing.T) {
+	provider := NewProvider()
+	require.True(t, provider.IsAvailable())
+}
+
+func TestProvider_RepoRoot(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Resolve symlinks (macOS /var -> /private/var)
+	repo, err := filepath.EvalSymlinks(repo)
+	require.NoError(t, err)
+
+	provider := NewProvider()
+
+	root, err := provider.RepoRoot(repo)
+	require.NoError(t, err)
+	require.Equal(t, repo, root)
+}
+
+func TestProvider_OriginURL(t *testing.T) {
+	repo := newTestRepo(t)
+	setRemote(t, repo, "origin", "https://github.com/user/repo.git")
+
+	provider := NewProvider()
+
+	url, err := provider.OriginURL(repo)
+	require.NoError(t, err)
+	require.Equal(t, "https://github.com/user/repo.git", url)
+}
+
+func TestProvider_ListRemotes(t *testing.T) {
+	repo := newTestRepo(t)
+	setRemote(t, repo, "origin", "https://github.com/user/repo.git")
+	setRemote(t, repo, "upstream", "https://github.com/upstream/repo.git")
+
+	provider := NewProvider()
+
+	remotes, err := provider.ListRemotes(repo)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"origin", "upstream"}, remotes)
+}
+
+func TestProvider_GetRemoteURL(t *testing.T) {
+	repo := newTestRepo(t)
+	setRemote(t, repo, "origin", "https://github.com/user/repo.git")
+
+	provider := NewProvider()
+
+	url, err := provider.GetRemoteURL(repo, "origin")
+	require.NoError(t, err)
+	require.Equal(t, "https://github.com/user/repo.git", url)
+}
+
+func TestProvider_HeadCommit(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	expectedHash := commitFile(t, repo, "test.txt", "hello")
+
+	provider := NewProvider()
+
+	hash, err := provider.HeadCommit()
+	require.NoError(t, err)
+	require.Equal(t, expectedHash, hash)
+}
+
+func TestProvider_CurrentBranch(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	commitFile(t, repo, "test.txt", "hello")
+
+	provider := NewProvider()
+
+	branch, err := provider.CurrentBranch()
+	require.NoError(t, err)
+	require.NotEmpty(t, branch)
+}
+
+func TestProvider_CommitMessage(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	commitFile(t, repo, "test.txt", "hello")
+
+	provider := NewProvider()
+
+	msg, err := provider.CommitMessage()
+	require.NoError(t, err)
+	require.Equal(t, "Add test.txt", msg)
+}
+
+func TestProvider_CommitAuthor(t *testing.T) {
+	repo := newTestRepo(t)
+
+	// Need to be inside the repo
+	oldDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(oldDir) }()
+
+	err = os.Chdir(repo)
+	require.NoError(t, err)
+
+	commitFile(t, repo, "test.txt", "hello")
+
+	provider := NewProvider()
+
+	author, err := provider.CommitAuthor()
+	require.NoError(t, err)
+	require.Equal(t, "Test User <test@example.com>", author)
 }

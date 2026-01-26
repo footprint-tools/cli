@@ -144,3 +144,17 @@ func TestOpen_ErrorHandling(t *testing.T) {
 	_, err := Open(invalidPath)
 	require.Error(t, err, "should error when path is invalid")
 }
+
+func TestInit_Deprecated(t *testing.T) {
+	db := newTestDB(t)
+
+	// Init is deprecated and should just return nil
+	err := Init(db)
+	require.NoError(t, err)
+}
+
+func TestDBPath(t *testing.T) {
+	path := DBPath()
+	require.NotEmpty(t, path)
+	require.Contains(t, path, "store.db")
+}

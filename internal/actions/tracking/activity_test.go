@@ -151,7 +151,8 @@ func mockDeps() Deps {
 		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
 			return []store.RepoEvent{}, nil
 		},
-		Pager: func(string) {},
+		Pager:   func(string) {},
+		Println: func(...any) (int, error) { return 0, nil },
 	}
 }
 
@@ -291,7 +292,8 @@ func TestActivity_ListEventsError(t *testing.T) {
 		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
 			return nil, sql.ErrNoRows
 		},
-		Pager: func(string) {},
+		Pager:   func(string) {},
+		Println: func(...any) (int, error) { return 0, nil },
 	}
 
 	flags := dispatchers.NewParsedFlags([]string{})
@@ -304,6 +306,7 @@ func TestActivity_ListEventsError(t *testing.T) {
 
 func TestActivity_EmptyResults(t *testing.T) {
 	pagerCalled := false
+	var printedMessage string
 	deps := Deps{
 		DBPath: func() string { return ":memory:" },
 		OpenDB: func(path string) (*sql.DB, error) {
@@ -312,7 +315,8 @@ func TestActivity_EmptyResults(t *testing.T) {
 		ListEvents: func(*sql.DB, store.EventFilter) ([]store.RepoEvent, error) {
 			return []store.RepoEvent{}, nil
 		},
-		Pager: func(string) { pagerCalled = true },
+		Pager:   func(string) { pagerCalled = true },
+		Println: func(a ...any) (int, error) { printedMessage = a[0].(string); return 0, nil },
 	}
 
 	flags := dispatchers.NewParsedFlags([]string{})
@@ -323,5 +327,8 @@ func TestActivity_EmptyResults(t *testing.T) {
 	}
 	if pagerCalled {
 		t.Error("activity() should not call pager when no events")
+	}
+	if printedMessage != "no events" {
+		t.Errorf("activity() should print 'no events', got %q", printedMessage)
 	}
 }

@@ -1,9 +1,6 @@
 package repo
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -166,379 +163,108 @@ func TestDeriveID(t *testing.T) {
 	}
 }
 
-func TestListTracked(t *testing.T) {
+func TestDeriveID_GitProtocol(t *testing.T) {
+	id, err := DeriveID("git://github.com/user/repo.git", "")
+	require.NoError(t, err)
+	require.Equal(t, RepoID("github.com/user/repo"), id)
+}
+
+func TestDeriveID_FileProtocol(t *testing.T) {
+	id, err := DeriveID("file:///path/to/repo", "")
+	require.NoError(t, err)
+	require.Equal(t, RepoID("local:/path/to/repo"), id)
+}
+
+func TestDeriveID_PathTraversal(t *testing.T) {
 	tests := []struct {
-		name        string
-		configLines []string
-		want        []RepoID
-		wantErr     bool
+		name      string
+		remoteURL string
+		wantErr   bool
 	}{
 		{
-			name:        "empty config",
-			configLines: []string{},
-			want:        []RepoID{},
-			wantErr:     false,
-		},
-		// New array format tests
-		{
-			name: "array format - single repo",
-			configLines: []string{
-				"trackedRepos[]=github.com/user/repo",
-			},
-			want:    []RepoID{"github.com/user/repo"},
-			wantErr: false,
+			name:      "SSH with path traversal in host",
+			remoteURL: "git@github..com:user/repo.git",
+			wantErr:   true,
 		},
 		{
-			name: "array format - multiple repos",
-			configLines: []string{
-				"trackedRepos[]=github.com/user/repo1",
-				"trackedRepos[]=github.com/user/repo2",
-				"trackedRepos[]=local:/path/to/repo",
-			},
-			want: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"local:/path/to/repo",
-			},
-			wantErr: false,
+			name:      "SSH with path traversal in path",
+			remoteURL: "git@github.com:../../../etc/passwd",
+			wantErr:   true,
 		},
 		{
-			name: "array format - path with comma",
-			configLines: []string{
-				"trackedRepos[]=local:/path/to/my,repo",
-			},
-			want:    []RepoID{"local:/path/to/my,repo"},
-			wantErr: false,
+			name:      "HTTPS with path traversal",
+			remoteURL: "https://github.com/../../../etc/passwd",
+			wantErr:   true,
 		},
 		{
-			name: "array format - ignores other config keys",
-			configLines: []string{
-				"export_interval=3600",
-				"trackedRepos[]=github.com/user/repo",
-				"export_last=2024-01-01T00:00:00Z",
-			},
-			want:    []RepoID{"github.com/user/repo"},
-			wantErr: false,
-		},
-		// Legacy comma-separated format tests (backward compatibility)
-		{
-			name: "legacy format - single repo",
-			configLines: []string{
-				"trackedRepos=github.com/user/repo",
-			},
-			want:    []RepoID{"github.com/user/repo"},
-			wantErr: false,
+			name:      "git:// with path traversal",
+			remoteURL: "git://github.com/../../../etc/passwd",
+			wantErr:   true,
 		},
 		{
-			name: "legacy format - multiple repos",
-			configLines: []string{
-				"trackedRepos=github.com/user/repo1,github.com/user/repo2,local:/path/to/repo",
-			},
-			want: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"local:/path/to/repo",
-			},
-			wantErr: false,
-		},
-		{
-			name: "legacy format - repos with spaces",
-			configLines: []string{
-				"trackedRepos=github.com/user/repo1 , github.com/user/repo2 , local:/path/to/repo",
-			},
-			want: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"local:/path/to/repo",
-			},
-			wantErr: false,
-		},
-		{
-			name: "legacy format - ignores other config keys",
-			configLines: []string{
-				"export_interval=3600",
-				"trackedRepos=github.com/user/repo",
-				"export_last=2024-01-01T00:00:00Z",
-			},
-			want:    []RepoID{"github.com/user/repo"},
-			wantErr: false,
-		},
-		{
-			name: "empty trackedRepos value",
-			configLines: []string{
-				"trackedRepos=",
-			},
-			want:    []RepoID{},
-			wantErr: false,
-		},
-		{
-			name: "whitespace-only trackedRepos value",
-			configLines: []string{
-				"trackedRepos=   ",
-			},
-			want:    []RepoID{},
-			wantErr: false,
+			name:      "null byte in URL",
+			remoteURL: "https://github.com/user\x00/repo",
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create temp HOME directory
-			tempHome := t.TempDir()
-			configPath := filepath.Join(tempHome, ".fprc")
-
-			// Write config file
-			if len(tt.configLines) > 0 {
-				content := ""
-				for _, line := range tt.configLines {
-					content += line + "\n"
-				}
-				err := os.WriteFile(configPath, []byte(content), 0600)
-				require.NoError(t, err)
-			}
-
-			// Override HOME for this test
-			oldHome := os.Getenv("HOME")
-			_ = os.Setenv("HOME", tempHome)
-			t.Cleanup(func() {
-				_ = os.Setenv("HOME", oldHome)
-			})
-
-			got, err := ListTracked()
-
+			_, err := DeriveID(tt.remoteURL, "")
 			if tt.wantErr {
 				require.Error(t, err)
+				require.Contains(t, err.Error(), "path traversal")
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.want, got)
 			}
 		})
 	}
 }
 
-func TestTrack(t *testing.T) {
+func TestContainsPathTraversal(t *testing.T) {
 	tests := []struct {
-		name           string
-		initialRepos   []RepoID
-		trackID        RepoID
-		wantAdded      bool
-		wantFinalRepos []RepoID
+		input    string
+		expected bool
 	}{
-		{
-			name:           "add to empty list",
-			initialRepos:   []RepoID{},
-			trackID:        "github.com/user/repo",
-			wantAdded:      true,
-			wantFinalRepos: []RepoID{"github.com/user/repo"},
-		},
-		{
-			name:           "path with comma works in new format",
-			initialRepos:   []RepoID{},
-			trackID:        "local:/path/to/my,repo",
-			wantAdded:      true,
-			wantFinalRepos: []RepoID{"local:/path/to/my,repo"},
-		},
-		{
-			name:           "add to existing list",
-			initialRepos:   []RepoID{"github.com/user/repo1"},
-			trackID:        "github.com/user/repo2",
-			wantAdded:      true,
-			wantFinalRepos: []RepoID{"github.com/user/repo1", "github.com/user/repo2"},
-		},
-		{
-			name:           "already tracked",
-			initialRepos:   []RepoID{"github.com/user/repo"},
-			trackID:        "github.com/user/repo",
-			wantAdded:      false,
-			wantFinalRepos: []RepoID{"github.com/user/repo"},
-		},
-		{
-			name: "already tracked among multiple",
-			initialRepos: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"github.com/user/repo3",
-			},
-			trackID:   "github.com/user/repo2",
-			wantAdded: false,
-			wantFinalRepos: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"github.com/user/repo3",
-			},
-		},
+		{"normal/path", false},
+		{"../parent", true},
+		{"path/../other", true},
+		{"path/\x00null", true},
+		{"safe-string", false},
+		{"", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temp HOME directory
-			tempHome := t.TempDir()
-			configPath := filepath.Join(tempHome, ".fprc")
-
-			// Write initial config (using array format)
-			if len(tt.initialRepos) > 0 {
-				content := repoIDsToConfigLines(tt.initialRepos)
-				err := os.WriteFile(configPath, []byte(content), 0600)
-				require.NoError(t, err)
-			}
-
-			// Override HOME for this test
-			oldHome := os.Getenv("HOME")
-			_ = os.Setenv("HOME", tempHome)
-			t.Cleanup(func() {
-				_ = os.Setenv("HOME", oldHome)
-			})
-
-			// Track the repo
-			added, err := Track(tt.trackID)
-			require.NoError(t, err)
-			require.Equal(t, tt.wantAdded, added)
-
-			// Verify final state
-			got, err := ListTracked()
-			require.NoError(t, err)
-			require.ElementsMatch(t, tt.wantFinalRepos, got)
+		t.Run(tt.input, func(t *testing.T) {
+			result := containsPathTraversal(tt.input)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestUntrack(t *testing.T) {
-	tests := []struct {
-		name           string
-		initialRepos   []RepoID
-		untrackID      RepoID
-		wantRemoved    bool
-		wantFinalRepos []RepoID
-	}{
-		{
-			name:           "remove from single-item list",
-			initialRepos:   []RepoID{"github.com/user/repo"},
-			untrackID:      "github.com/user/repo",
-			wantRemoved:    true,
-			wantFinalRepos: []RepoID{},
-		},
-		{
-			name: "remove from multi-item list",
-			initialRepos: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo2",
-				"github.com/user/repo3",
-			},
-			untrackID:   "github.com/user/repo2",
-			wantRemoved: true,
-			wantFinalRepos: []RepoID{
-				"github.com/user/repo1",
-				"github.com/user/repo3",
-			},
-		},
-		{
-			name:           "not found in list",
-			initialRepos:   []RepoID{"github.com/user/repo1"},
-			untrackID:      "github.com/user/repo2",
-			wantRemoved:    false,
-			wantFinalRepos: []RepoID{"github.com/user/repo1"},
-		},
-		{
-			name:           "not found in empty list",
-			initialRepos:   []RepoID{},
-			untrackID:      "github.com/user/repo",
-			wantRemoved:    false,
-			wantFinalRepos: []RepoID{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temp HOME directory
-			tempHome := t.TempDir()
-			configPath := filepath.Join(tempHome, ".fprc")
-
-			// Write initial config (using array format)
-			if len(tt.initialRepos) > 0 {
-				content := repoIDsToConfigLines(tt.initialRepos)
-				err := os.WriteFile(configPath, []byte(content), 0600)
-				require.NoError(t, err)
-			}
-
-			// Override HOME for this test
-			oldHome := os.Getenv("HOME")
-			_ = os.Setenv("HOME", tempHome)
-			t.Cleanup(func() {
-				_ = os.Setenv("HOME", oldHome)
-			})
-
-			// Untrack the repo
-			removed, err := Untrack(tt.untrackID)
-			require.NoError(t, err)
-			require.Equal(t, tt.wantRemoved, removed)
-
-			// Verify final state
-			got, err := ListTracked()
-			require.NoError(t, err)
-			require.ElementsMatch(t, tt.wantFinalRepos, got)
-
-			// If final list is empty, verify trackedRepos key was removed from config
-			if len(tt.wantFinalRepos) == 0 && len(tt.initialRepos) > 0 {
-				content, err := os.ReadFile(configPath)
-				require.NoError(t, err)
-				require.NotContains(t, string(content), "trackedRepos")
-			}
-		})
-	}
+func TestNewDeriver(t *testing.T) {
+	d := NewDeriver()
+	require.NotNil(t, d)
 }
 
-func TestIsTracked(t *testing.T) {
-	tests := []struct {
-		name         string
-		trackedRepos []RepoID
-		checkID      RepoID
-		want         bool
-	}{
-		{
-			name:         "found in list",
-			trackedRepos: []RepoID{"github.com/user/repo1", "github.com/user/repo2"},
-			checkID:      "github.com/user/repo1",
-			want:         true,
-		},
-		{
-			name:         "not found in list",
-			trackedRepos: []RepoID{"github.com/user/repo1"},
-			checkID:      "github.com/user/repo2",
-			want:         false,
-		},
-		{
-			name:         "empty list",
-			trackedRepos: []RepoID{},
-			checkID:      "github.com/user/repo",
-			want:         false,
-		},
-	}
+func TestDeriver_DeriveID(t *testing.T) {
+	d := NewDeriver()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temp HOME directory
-			tempHome := t.TempDir()
-			configPath := filepath.Join(tempHome, ".fprc")
+	// Success case
+	id, err := d.DeriveID("https://github.com/user/repo.git", "")
+	require.NoError(t, err)
+	require.Equal(t, "github.com/user/repo", string(id))
 
-			// Write initial config (using array format)
-			if len(tt.trackedRepos) > 0 {
-				content := repoIDsToConfigLines(tt.trackedRepos)
-				err := os.WriteFile(configPath, []byte(content), 0600)
-				require.NoError(t, err)
-			}
+	// Error case
+	_, err = d.DeriveID("", "")
+	require.Error(t, err)
+}
 
-			// Override HOME for this test
-			oldHome := os.Getenv("HOME")
-			_ = os.Setenv("HOME", tempHome)
-			t.Cleanup(func() {
-				_ = os.Setenv("HOME", oldHome)
-			})
-
-			got, err := IsTracked(tt.checkID)
-			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
-		})
-	}
+func TestToFilesystemSafe_LeadingUnderscores(t *testing.T) {
+	// Test that leading underscores are removed
+	id := RepoID("//leading/slashes")
+	safe := id.ToFilesystemSafe()
+	require.False(t, safe[0] == '_', "should not start with underscore")
 }
 
 func TestToFilesystemSafe(t *testing.T) {
@@ -580,16 +306,4 @@ func TestToFilesystemSafe(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
-}
-
-// Helper function to create config lines for repo IDs (new array format)
-func repoIDsToConfigLines(ids []RepoID) string {
-	if len(ids) == 0 {
-		return ""
-	}
-	var lines []string
-	for _, id := range ids {
-		lines = append(lines, "trackedRepos[]="+string(id))
-	}
-	return strings.Join(lines, "\n") + "\n"
 }

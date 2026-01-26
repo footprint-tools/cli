@@ -50,19 +50,6 @@ func record(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		return nil
 	}
 
-	tracked, err := deps.IsTracked(repoID)
-	if err != nil || !tracked {
-		// Warning: hooks are running in an untracked repository
-		// This might indicate hooks weren't cleaned up properly
-		if isFromHook {
-			log.Warn("fp record: repository not tracked but hooks are active (repo=%s, path=%s)", repoID, repoRoot)
-		}
-		if showErrors {
-			_, _ = deps.Println("repository not tracked")
-		}
-		return nil
-	}
-
 	commit, err := deps.HeadCommit()
 	if err != nil {
 		if showErrors {

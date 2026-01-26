@@ -354,5 +354,26 @@ func (s *Store) CountOrphaned() (int64, error) {
 	return count, nil
 }
 
+// ListDistinctRepos returns all unique repository IDs that have recorded events.
+func (s *Store) ListDistinctRepos() ([]domain.RepoID, error) {
+	query := `SELECT DISTINCT repo_id FROM repo_events ORDER BY repo_id`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var repos []domain.RepoID
+	for rows.Next() {
+		var repoID string
+		if err := rows.Scan(&repoID); err != nil {
+			return nil, err
+		}
+		repos = append(repos, domain.RepoID(repoID))
+	}
+
+	return repos, rows.Err()
+}
+
 // Verify Store implements domain.EventStore
 var _ domain.EventStore = (*Store)(nil)

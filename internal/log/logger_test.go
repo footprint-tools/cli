@@ -34,17 +34,17 @@ func TestLogger_BasicLogging(t *testing.T) {
 
 	logContent := string(content)
 
-	// Verify all messages are present
-	if !strings.Contains(logContent, "DEBUG: debug message") {
+	// Verify all messages are present (format: [timestamp] LEVEL caller: message)
+	if !strings.Contains(logContent, "DEBUG") || !strings.Contains(logContent, "debug message") {
 		t.Error("Debug message not found in log")
 	}
-	if !strings.Contains(logContent, "INFO: info message") {
+	if !strings.Contains(logContent, "INFO") || !strings.Contains(logContent, "info message") {
 		t.Error("Info message not found in log")
 	}
-	if !strings.Contains(logContent, "WARN: warning message") {
+	if !strings.Contains(logContent, "WARN") || !strings.Contains(logContent, "warning message") {
 		t.Error("Warning message not found in log")
 	}
-	if !strings.Contains(logContent, "ERROR: error message") {
+	if !strings.Contains(logContent, "ERROR") || !strings.Contains(logContent, "error message") {
 		t.Error("Error message not found in log")
 	}
 }
@@ -83,10 +83,10 @@ func TestLogger_LevelFiltering(t *testing.T) {
 	}
 
 	// Warn and Error SHOULD be present
-	if !strings.Contains(logContent, "WARN: warning message") {
+	if !strings.Contains(logContent, "WARN") || !strings.Contains(logContent, "warning message") {
 		t.Error("Warning message should be present")
 	}
-	if !strings.Contains(logContent, "ERROR: error message") {
+	if !strings.Contains(logContent, "ERROR") || !strings.Contains(logContent, "error message") {
 		t.Error("Error message should be present")
 	}
 }
@@ -180,70 +180,6 @@ func TestLogger_AppendMode(t *testing.T) {
 	}
 }
 
-func TestLogger_Disabled(t *testing.T) {
-	tmpDir := t.TempDir()
-	logPath := filepath.Join(tmpDir, "test.log")
-
-	logger, err := New(logPath, LevelInfo)
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	defer func() { _ = logger.Close() }()
-
-	logger.Info("enabled message")
-	logger.SetEnabled(false)
-	logger.Info("disabled message")
-	logger.SetEnabled(true)
-	logger.Info("enabled again")
-
-	_ = logger.Close()
-
-	content, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	logContent := string(content)
-
-	if !strings.Contains(logContent, "enabled message") {
-		t.Error("First message not found")
-	}
-	if strings.Contains(logContent, "disabled message") {
-		t.Error("Disabled message should not be present")
-	}
-	if !strings.Contains(logContent, "enabled again") {
-		t.Error("Third message not found")
-	}
-}
-
-func TestParseLevel(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected Level
-	}{
-		{"debug", LevelDebug},
-		{"DEBUG", LevelDebug},
-		{"Debug", LevelDebug},
-		{"info", LevelInfo},
-		{"INFO", LevelInfo},
-		{"warn", LevelWarn},
-		{"WARN", LevelWarn},
-		{"error", LevelError},
-		{"ERROR", LevelError},
-		{"unknown", LevelWarn}, // Default to warn
-		{"", LevelWarn},        // Default to warn
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := ParseLevel(tt.input)
-			if result != tt.expected {
-				t.Errorf("ParseLevel(%q) = %v, want %v", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestLevel_String(t *testing.T) {
 	tests := []struct {
 		level    Level
@@ -264,43 +200,12 @@ func TestLevel_String(t *testing.T) {
 	}
 }
 
-func TestLogger_Writer(t *testing.T) {
-	tmpDir := t.TempDir()
-	logPath := filepath.Join(tmpDir, "test.log")
-
-	logger, err := New(logPath, LevelDebug)
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	defer func() { _ = logger.Close() }()
-
-	writer := logger.Writer(LevelInfo)
-	_, _ = writer.Write([]byte("message from writer"))
-
-	_ = logger.Close()
-
-	content, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	if !strings.Contains(string(content), "message from writer") {
-		t.Error("Writer message not found in log")
-	}
-}
-
 func TestLogger_CloseNil(t *testing.T) {
 	var logger *Logger = nil
 	err := logger.Close()
 	if err != nil {
 		t.Errorf("Close() on nil logger should return nil, got %v", err)
 	}
-}
-
-func TestLogger_SetEnabledNil(t *testing.T) {
-	var logger *Logger = nil
-	// Should not panic
-	logger.SetEnabled(true)
 }
 
 func TestLogger_LogNil(t *testing.T) {
@@ -328,11 +233,6 @@ func TestGlobalLogger_NilDefault(t *testing.T) {
 	if err != nil {
 		t.Errorf("Close() with nil defaultLogger should return nil, got %v", err)
 	}
-
-	logger := GetLogger()
-	if logger != nil {
-		t.Errorf("GetLogger() should return nil, got %v", logger)
-	}
 }
 
 func TestGlobalLogger_WithLogger(t *testing.T) {
@@ -358,12 +258,6 @@ func TestGlobalLogger_WithLogger(t *testing.T) {
 	Info("info message")
 	Warn("warn message")
 	Error("error message")
-
-	// Get the logger
-	got := GetLogger()
-	if got != logger {
-		t.Errorf("GetLogger() should return the default logger")
-	}
 
 	// Close via global function
 	err = Close()

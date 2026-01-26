@@ -455,3 +455,53 @@ func TestStore_CountOrphaned(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(2), count)
 }
+
+func TestStore_ListDistinctRepos(t *testing.T) {
+	s := newTestStore(t)
+
+	// Empty database
+	repos, err := s.ListDistinctRepos()
+	require.NoError(t, err)
+	require.Empty(t, repos)
+
+	// Add events with different repo IDs
+	events := []domain.RepoEvent{
+		{
+			RepoID:    domain.RepoID("github.com/test/repo1"),
+			RepoPath:  "/path/to/repo1",
+			Commit:    "abc1234",
+			Branch:    "main",
+			Timestamp: time.Now(),
+			Status:    domain.StatusPending,
+			Source:    domain.SourcePostCommit,
+		},
+		{
+			RepoID:    domain.RepoID("github.com/test/repo1"),
+			RepoPath:  "/path/to/repo1",
+			Commit:    "def5678",
+			Branch:    "main",
+			Timestamp: time.Now(),
+			Status:    domain.StatusPending,
+			Source:    domain.SourcePostCommit,
+		},
+		{
+			RepoID:    domain.RepoID("github.com/test/repo2"),
+			RepoPath:  "/path/to/repo2",
+			Commit:    "ghi9012",
+			Branch:    "main",
+			Timestamp: time.Now(),
+			Status:    domain.StatusPending,
+			Source:    domain.SourcePostCommit,
+		},
+	}
+
+	for _, e := range events {
+		require.NoError(t, s.Insert(e))
+	}
+
+	repos, err = s.ListDistinctRepos()
+	require.NoError(t, err)
+	require.Len(t, repos, 2)
+	require.Contains(t, repos, domain.RepoID("github.com/test/repo1"))
+	require.Contains(t, repos, domain.RepoID("github.com/test/repo2"))
+}

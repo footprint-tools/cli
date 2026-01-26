@@ -2,10 +2,9 @@ package log
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
+	"runtime"
 	"sync"
 	"time"
 
@@ -34,24 +33,6 @@ func (l Level) String() string {
 		return "ERROR"
 	default:
 		return "UNKNOWN"
-	}
-}
-
-// ParseLevel converts a string to a Level.
-// Valid values: "debug", "info", "warn", "error" (case insensitive).
-// Returns LevelWarn if the string is not recognized.
-func ParseLevel(s string) Level {
-	switch strings.ToLower(s) {
-	case "debug":
-		return LevelDebug
-	case "info":
-		return LevelInfo
-	case "warn":
-		return LevelWarn
-	case "error":
-		return LevelError
-	default:
-		return LevelWarn
 	}
 }
 
@@ -119,18 +100,13 @@ func (l *Logger) Close() error {
 	return l.file.Close()
 }
 
-// SetEnabled habilita o deshabilita el logging
-func (l *Logger) SetEnabled(enabled bool) {
-	if l == nil {
-		return
-	}
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.enabled = enabled
-}
-
 // log escribe un mensaje con el nivel especificado
 func (l *Logger) log(level Level, format string, args ...interface{}) {
+	l.logWithCaller(level, 3, format, args...)
+}
+
+// logWithCaller escribe un mensaje con información del caller
+func (l *Logger) logWithCaller(level Level, skip int, format string, args ...interface{}) {
 	if l == nil || !l.enabled || level < l.minLevel {
 		return
 	}
@@ -140,7 +116,16 @@ func (l *Logger) log(level Level, format string, args ...interface{}) {
 
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	message := fmt.Sprintf(format, args...)
-	logLine := fmt.Sprintf("[%s] %s: %s\n", timestamp, level.String(), message)
+
+	// Get caller information
+	caller := "unknown"
+	if _, file, line, ok := runtime.Caller(skip); ok {
+		// Get just the filename, not full path
+		file = filepath.Base(file)
+		caller = fmt.Sprintf("%s:%d", file, line)
+	}
+
+	logLine := fmt.Sprintf("[%s] %s %s: %s\n", timestamp, level.String(), caller, message)
 
 	if _, err := l.file.Write([]byte(logLine)); err != nil {
 		// Can't log to file, output to stderr for critical messages
@@ -168,21 +153,6 @@ func (l *Logger) Warn(format string, args ...interface{}) {
 // Error escribe un error
 func (l *Logger) Error(format string, args ...interface{}) {
 	l.log(LevelError, format, args...)
-}
-
-// Writer retorna un io.Writer que escribe al log con el nivel especificado
-func (l *Logger) Writer(level Level) io.Writer {
-	return &logWriter{logger: l, level: level}
-}
-
-type logWriter struct {
-	logger *Logger
-	level  Level
-}
-
-func (w *logWriter) Write(p []byte) (n int, err error) {
-	w.logger.log(w.level, "%s", string(p))
-	return len(p), nil
 }
 
 // Funciones de conveniencia para el logger global
@@ -236,13 +206,6 @@ func Close() error {
 		return l.Close()
 	}
 	return nil
-}
-
-// GetLogger retorna el logger global (puede ser nil si no se inicializó)
-func GetLogger() *Logger {
-	defaultLoggerMu.RLock()
-	defer defaultLoggerMu.RUnlock()
-	return defaultLogger
 }
 
 // NopLogger is a logger that discards all messages.

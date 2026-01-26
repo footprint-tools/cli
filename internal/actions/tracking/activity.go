@@ -67,6 +67,7 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		return fmt.Errorf("failed to list events: %w", err)
 	}
 	if len(events) == 0 {
+		_, _ = deps.Println("no events")
 		return nil
 	}
 

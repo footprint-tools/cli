@@ -34,9 +34,6 @@ func TestRecord_SuccessFromHook(t *testing.T) {
 		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 			return "github.com/user/repo", nil
 		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return true, nil
-		},
 		HeadCommit: func() (string, error) {
 			return "abc123def456", nil
 		},
@@ -98,9 +95,6 @@ func TestRecord_SuccessWithManualFlag(t *testing.T) {
 		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 			return "github.com/user/repo", nil
 		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return true, nil
-		},
 		HeadCommit: func() (string, error) {
 			return "abc123", nil
 		},
@@ -155,9 +149,6 @@ func TestRecord_SuccessWithVerboseFlag(t *testing.T) {
 		},
 		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 			return "github.com/user/repo", nil
-		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return true, nil
 		},
 		HeadCommit: func() (string, error) {
 			return "def456", nil
@@ -275,88 +266,6 @@ func TestRecord_NotInGitRepo(t *testing.T) {
 	require.True(t, errorShown)
 }
 
-func TestRecord_RepositoryNotTracked(t *testing.T) {
-	var errorShown bool
-
-	deps := Deps{
-		Getenv: func(key string) string {
-			return "post-commit" // From hook to avoid note message
-		},
-		GitIsAvailable: func() bool { return true },
-		RepoRoot: func(path string) (string, error) {
-			return "/path/to/repo", nil
-		},
-		OriginURL: func(repoRoot string) (string, error) {
-			return "https://github.com/user/repo.git", nil
-		},
-		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
-			return "github.com/user/repo", nil
-		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return false, nil // Not tracked
-		},
-		Println: func(a ...any) (int, error) {
-			if len(a) > 0 {
-				if str, ok := a[0].(string); ok && str == "repository not tracked" {
-					errorShown = true
-				}
-			}
-			return 0, nil
-		},
-		Printf: func(format string, a ...any) (int, error) {
-			return 0, nil
-		},
-	}
-
-	// Should not show error when from hook
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := record([]string{}, flags, deps)
-
-	require.NoError(t, err)
-	require.False(t, errorShown)
-
-	// With --verbose, should show error
-	errorShown = false
-	flags = dispatchers.NewParsedFlags([]string{"--verbose"})
-	err = record([]string{}, flags, deps)
-
-	require.NoError(t, err)
-	require.True(t, errorShown)
-}
-
-func TestRecord_UntrackedRepoFromHook(t *testing.T) {
-	deps := Deps{
-		Getenv: func(key string) string {
-			return "post-commit" // From hook
-		},
-		GitIsAvailable: func() bool { return true },
-		RepoRoot: func(path string) (string, error) {
-			return "/path/to/repo", nil
-		},
-		OriginURL: func(repoRoot string) (string, error) {
-			return "https://github.com/user/repo.git", nil
-		},
-		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
-			return "github.com/user/repo", nil
-		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return false, nil // Not tracked
-		},
-		Println: func(a ...any) (int, error) {
-			return 0, nil
-		},
-		Printf: func(format string, a ...any) (int, error) {
-			return 0, nil
-		},
-	}
-
-	// Should exit silently but log warning (we can't verify log in this test)
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := record([]string{}, flags, deps)
-
-	require.NoError(t, err)
-}
-
 func TestRecord_DifferentSourceTypes(t *testing.T) {
 	tests := []struct {
 		envValue       string
@@ -391,9 +300,6 @@ func TestRecord_DifferentSourceTypes(t *testing.T) {
 				},
 				DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 					return "github.com/user/repo", nil
-				},
-				IsTracked: func(id repo.RepoID) (bool, error) {
-					return true, nil
 				},
 				HeadCommit: func() (string, error) {
 					return "abc123", nil
@@ -452,9 +358,6 @@ func TestRecord_DatabaseOpenError(t *testing.T) {
 		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 			return "github.com/user/repo", nil
 		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return true, nil
-		},
 		HeadCommit: func() (string, error) {
 			return "abc123", nil
 		},
@@ -507,9 +410,6 @@ func TestRecord_InsertEventError(t *testing.T) {
 		},
 		DeriveID: func(remoteURL, repoRoot string) (repo.RepoID, error) {
 			return "github.com/user/repo", nil
-		},
-		IsTracked: func(id repo.RepoID) (bool, error) {
-			return true, nil
 		},
 		HeadCommit: func() (string, error) {
 			return "abc123", nil

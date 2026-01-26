@@ -2,24 +2,28 @@ package repo
 
 import (
 	"errors"
-	"net/url"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/config"
+	"github.com/footprint-tools/footprint-cli/internal/domain"
 )
 
 type RepoID string
 
-const trackedReposKey = "trackedRepos"
+// Deriver provides repository ID derivation.
+type Deriver struct{}
 
-// decodeRepoID decodes a URL-encoded repo ID.
-// Used for backward compatibility with old comma-separated format.
-func decodeRepoID(encoded string) RepoID {
-	decoded, err := url.QueryUnescape(encoded)
+// NewDeriver creates a new Deriver.
+func NewDeriver() *Deriver {
+	return &Deriver{}
+}
+
+// DeriveID derives a repository ID from a remote URL or local path.
+func (d *Deriver) DeriveID(remoteURL, localPath string) (domain.RepoID, error) {
+	id, err := DeriveID(remoteURL, localPath)
 	if err != nil {
-		return RepoID(encoded)
+		return "", err
 	}
-	return RepoID(decoded)
+	return domain.RepoID(id), nil
 }
 
 // containsPathTraversal checks if a string contains path traversal sequences
@@ -100,158 +104,6 @@ func DeriveID(remoteURL, repoRoot string) (RepoID, error) {
 	}
 
 	return "", errors.New("cannot derive repo id")
-}
-
-func ListTracked() ([]RepoID, error) {
-	lines, err := config.ReadLines()
-	if err != nil {
-		return nil, err
-	}
-
-	// Try new array format first (trackedRepos[]=value)
-	values := config.ParseArray(lines, trackedReposKey)
-	if len(values) > 0 {
-		out := make([]RepoID, 0, len(values))
-		for _, v := range values {
-			out = append(out, RepoID(v))
-		}
-		return out, nil
-	}
-
-	// Fall back to old comma-separated format (trackedRepos=a,b,c)
-	cfg, err := config.Parse(lines)
-	if err != nil {
-		return nil, err
-	}
-
-	value, ok := cfg[trackedReposKey]
-	if !ok || strings.TrimSpace(value) == "" {
-		return []RepoID{}, nil
-	}
-
-	parts := strings.Split(value, ",")
-	out := make([]RepoID, 0, len(parts))
-
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			out = append(out, decodeRepoID(p))
-		}
-	}
-
-	return out, nil
-}
-
-func Track(id RepoID) (bool, error) {
-	var added bool
-	err := config.WithLock(func() error {
-		lines, err := config.ReadLines()
-		if err != nil {
-			return err
-		}
-
-		// Migrate from old format if needed
-		lines, err = migrateToArrayFormat(lines)
-		if err != nil {
-			return err
-		}
-
-		// Add to array (AppendArray checks for duplicates)
-		var wasAdded bool
-		lines, wasAdded = config.AppendArray(lines, trackedReposKey, string(id))
-		added = wasAdded
-
-		if !wasAdded {
-			return nil // Already tracked
-		}
-
-		return config.WriteLines(lines)
-	})
-	return added, err
-}
-
-func Untrack(id RepoID) (bool, error) {
-	var removed bool
-	err := config.WithLock(func() error {
-		lines, err := config.ReadLines()
-		if err != nil {
-			return err
-		}
-
-		// Migrate from old format if needed
-		lines, err = migrateToArrayFormat(lines)
-		if err != nil {
-			return err
-		}
-
-		// Remove from array
-		var wasRemoved bool
-		lines, wasRemoved = config.RemoveFromArray(lines, trackedReposKey, string(id))
-		removed = wasRemoved
-
-		if !wasRemoved {
-			return nil // Wasn't tracked
-		}
-
-		return config.WriteLines(lines)
-	})
-	return removed, err
-}
-
-// migrateToArrayFormat converts old comma-separated format to new array format.
-// If already in array format or no tracked repos, returns lines unchanged.
-func migrateToArrayFormat(lines []string) ([]string, error) {
-	// Check if already using array format
-	values := config.ParseArray(lines, trackedReposKey)
-	if len(values) > 0 {
-		return lines, nil // Already migrated
-	}
-
-	// Check for old format
-	cfg, err := config.Parse(lines)
-	if err != nil {
-		return nil, err
-	}
-
-	value, ok := cfg[trackedReposKey]
-	if !ok || strings.TrimSpace(value) == "" {
-		return lines, nil // Nothing to migrate
-	}
-
-	// Parse old format
-	parts := strings.Split(value, ",")
-	var repos []RepoID
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			repos = append(repos, decodeRepoID(p))
-		}
-	}
-
-	// Remove old format
-	lines, _ = config.Unset(lines, trackedReposKey)
-
-	// Add in new format
-	for _, repo := range repos {
-		lines, _ = config.AppendArray(lines, trackedReposKey, string(repo))
-	}
-
-	return lines, nil
-}
-
-func IsTracked(id RepoID) (bool, error) {
-	current, err := ListTracked()
-	if err != nil {
-		return false, err
-	}
-
-	for _, existing := range current {
-		if existing == id {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // ToFilesystemSafe converts a RepoID to a filesystem-safe directory name.

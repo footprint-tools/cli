@@ -31,17 +31,22 @@ func isValidCommitRef(ref string) bool {
 	return commitHashPattern.MatchString(ref)
 }
 
+// DiffStats contains statistics from a git diff.
 type DiffStats struct {
 	FilesChanged int
 	Insertions   int
 	Deletions    int
-	Files        []FileStat
 }
 
-type FileStat struct {
-	Path       string
-	Insertions int
-	Deletions  int
+func parseNumstat(v string) int {
+	if v == "-" {
+		return 0
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 func IsAvailable() bool {
@@ -109,64 +114,6 @@ func CommitAuthor() (string, error) {
 	return runGit("show", "-s", "--format=%an <%ae>", "HEAD")
 }
 
-func CommitSubject() (string, error) {
-	return runGit("show", "-s", "--format=%s", "HEAD")
-}
-
-func CommitDiffStats() (DiffStats, error) {
-	out, err := runGit(
-		"diff-tree",
-		"--no-commit-id",
-		"--numstat",
-		"-r",
-		"HEAD",
-	)
-	if err != nil {
-		return DiffStats{}, err
-	}
-
-	stats := DiffStats{}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) != 3 {
-			continue
-		}
-
-		ins := parseNumstat(parts[0])
-		del := parseNumstat(parts[1])
-		path := parts[2]
-
-		stats.FilesChanged++
-		stats.Insertions += ins
-		stats.Deletions += del
-
-		stats.Files = append(stats.Files, FileStat{
-			Path:       path,
-			Insertions: ins,
-			Deletions:  del,
-		})
-	}
-
-	return stats, nil
-}
-
-func parseNumstat(v string) int {
-	if v == "-" {
-		return 0
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return 0
-	}
-	return n
-}
-
 func runGit(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	var out bytes.Buffer
@@ -188,6 +135,7 @@ type CommitMetadata struct {
 	CommitterName  string
 	CommitterEmail string
 	Subject        string // Commit message (first line)
+	Body           string // Commit message body (after first line)
 	FilesChanged   int
 	Insertions     int
 	Deletions      int
@@ -211,9 +159,9 @@ func GetCommitMetadata(repoPath, commit string) CommitMetadata {
 		meta.ParentCommits = strings.Join(parentList, " ")
 	}
 
-	// Get author, committer info, author date, and subject using git show with format
-	// Format: author_name%x00author_email%x00author_date_iso%x00committer_name%x00committer_email%x00subject
-	format := "%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%s"
+	// Get author, committer info, author date, subject, and body using git show with format
+	// Format: author_name%x00author_email%x00author_date_iso%x00committer_name%x00committer_email%x00subject%x00body
+	format := "%an%x00%ae%x00%aI%x00%cn%x00%ce%x00%s%x00%b"
 	if info, err := runGitInRepo(repoPath, "show", "-s", "--format="+format, commit); err == nil {
 		parts := strings.Split(info, "\x00")
 		if len(parts) >= 6 {
@@ -223,6 +171,9 @@ func GetCommitMetadata(repoPath, commit string) CommitMetadata {
 			meta.CommitterName = parts[3]
 			meta.CommitterEmail = parts[4]
 			meta.Subject = parts[5]
+			if len(parts) >= 7 {
+				meta.Body = strings.TrimSpace(parts[6])
+			}
 		}
 	}
 
