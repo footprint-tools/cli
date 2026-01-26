@@ -303,19 +303,127 @@ func TestLoadColorConfig_ColorNumberOverrides(t *testing.T) {
 
 func TestMakeStyle_Bold(t *testing.T) {
 	s := makeStyle("bold")
-	// Check that bold style is created (we can't easily inspect the style,
-	// but we can verify it doesn't panic and returns a style)
 	rendered := s.Render("test")
+
+	// Verify output is not empty
 	if rendered == "" {
 		t.Error("makeStyle(bold) should return a usable style")
+	}
+
+	// Verify the text is preserved
+	if !strings.Contains(rendered, "test") {
+		t.Errorf("makeStyle(bold) output %q does not contain input text", rendered)
+	}
+
+	// Verify bold ANSI escape sequence is present (ESC[1m for bold)
+	if !strings.Contains(rendered, "\x1b[1m") && !strings.Contains(rendered, "\x1b[1;") {
+		t.Errorf("makeStyle(bold) should contain bold escape code, got: %q", rendered)
 	}
 }
 
 func TestMakeStyle_Color(t *testing.T) {
+	// Test standard ANSI color (cyan = 6)
 	s := makeStyle("6")
 	rendered := s.Render("test")
+
 	if rendered == "" {
 		t.Error("makeStyle(6) should return a usable style")
+	}
+
+	// Verify the text is preserved
+	if !strings.Contains(rendered, "test") {
+		t.Errorf("makeStyle(6) output %q does not contain input text", rendered)
+	}
+
+	// Verify ANSI escape codes are present
+	if !strings.Contains(rendered, "\x1b[") {
+		t.Errorf("makeStyle(6) should contain ANSI escape codes, got: %q", rendered)
+	}
+}
+
+func TestMakeStyle_ExtendedColors(t *testing.T) {
+	// Test various extended ANSI 256 colors
+	testCases := []struct {
+		color string
+		name  string
+	}{
+		{"0", "black"},
+		{"9", "bright red"},
+		{"10", "bright green"},
+		{"82", "lime green"},
+		{"196", "red"},
+		{"245", "gray"},
+		{"255", "white"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := makeStyle(tc.color)
+			rendered := s.Render("test")
+
+			if rendered == "" {
+				t.Errorf("makeStyle(%q) should return a usable style", tc.color)
+			}
+
+			if !strings.Contains(rendered, "test") {
+				t.Errorf("makeStyle(%q) output %q does not contain input text", tc.color, rendered)
+			}
+
+			// Verify ANSI escape codes are present (256-color format: ESC[38;5;Nm)
+			if !strings.Contains(rendered, "\x1b[") {
+				t.Errorf("makeStyle(%q) should contain ANSI escape codes, got: %q", tc.color, rendered)
+			}
+		})
+	}
+}
+
+func TestMakeStyle_EmptyInput(t *testing.T) {
+	// Test that makeStyle handles empty string input gracefully
+	s := makeStyle("10")
+	rendered := s.Render("")
+
+	// Should not panic and should return something (possibly just ANSI codes)
+	// The important thing is it doesn't crash
+	_ = rendered
+}
+
+func TestMakeStyle_DifferentColorsShouldDiffer(t *testing.T) {
+	// Verify that different colors produce different ANSI output
+	style1 := makeStyle("9")  // bright red
+	style2 := makeStyle("10") // bright green
+
+	rendered1 := style1.Render("test")
+	rendered2 := style2.Render("test")
+
+	// Both should contain the text
+	if !strings.Contains(rendered1, "test") || !strings.Contains(rendered2, "test") {
+		t.Error("Both styles should preserve the input text")
+	}
+
+	// The full rendered output should be different due to different color codes
+	if rendered1 == rendered2 {
+		t.Error("Different colors should produce different ANSI output")
+	}
+}
+
+func TestMakeStyle_BoldVsColorAreDifferent(t *testing.T) {
+	boldStyle := makeStyle("bold")
+	colorStyle := makeStyle("10")
+
+	boldRendered := boldStyle.Render("test")
+	colorRendered := colorStyle.Render("test")
+
+	// Both should contain the text
+	if !strings.Contains(boldRendered, "test") {
+		t.Errorf("Bold style output %q does not contain input text", boldRendered)
+	}
+	if !strings.Contains(colorRendered, "test") {
+		t.Errorf("Color style output %q does not contain input text", colorRendered)
+	}
+
+	// The outputs should be different (bold vs foreground color)
+	if boldRendered == colorRendered {
+		t.Error("Bold and color styles should produce different ANSI output")
 	}
 }
 

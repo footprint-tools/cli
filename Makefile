@@ -1,7 +1,7 @@
 VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X github.com/footprint-tools/footprint-cli/internal/app.Version=$(VERSION)"
 
-.PHONY: all build test lint fmt clean install wipe integration demo
+.PHONY: all build test lint fmt clean install wipe integration simulate-activity
 
 # Default target
 all: build
@@ -67,7 +67,8 @@ wipe:
 	rm -f ./fp
 	@echo "Wiped hooks, database, exports, config, and fpdev binary"
 
-# Generate continuous events for testing watch -i (Ctrl+C to stop)
-# Usage: make demo [REPOS=5]
-demo: build
+# Simulate continuous git activity for testing watch -i (Ctrl+C to stop)
+# Creates temporary repos, tracks them, and generates commits/merges/checkouts
+# Usage: make simulate-activity [REPOS=5]
+simulate-activity: build
 	./scripts/event-generator.sh $(or $(REPOS),3)

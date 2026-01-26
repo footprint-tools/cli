@@ -8,9 +8,9 @@ import (
 )
 
 type Dependencies struct {
-	Stdout     io.Writer
-	Stderr     io.Writer
-	HTTPClient HTTPClient
+	Stdout         io.Writer
+	Stderr         io.Writer
+	HTTPClient     HTTPClient
 	CurrentVersion string
 	ExecutablePath func() (string, error)
 	RunCommand     func(name string, args ...string) error
