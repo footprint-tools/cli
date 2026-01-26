@@ -33,11 +33,20 @@ func (f *ParsedFlags) Has(name string) bool {
 
 // String returns the value of a flag, or defaultVal if not present.
 // Supports both --flag=value and --flag value formats.
+// In the second format, the next element must not start with "-" to be considered a value.
 func (f *ParsedFlags) String(name, defaultVal string) string {
 	prefix := name + "="
-	for _, flag := range f.raw {
+	for i, flag := range f.raw {
+		// Format: --flag=value
 		if strings.HasPrefix(flag, prefix) {
 			return strings.TrimPrefix(flag, prefix)
+		}
+		// Format: --flag value (value must not be a flag)
+		if flag == name && i+1 < len(f.raw) {
+			next := f.raw[i+1]
+			if !strings.HasPrefix(next, "-") {
+				return next
+			}
 		}
 	}
 	return defaultVal

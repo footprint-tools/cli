@@ -2,7 +2,6 @@ package logs
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/footprint-tools/footprint-cli/internal/ui/splitpanel"
@@ -68,7 +67,7 @@ func (m logsModel) renderHeader() string {
 	successStyle := lipgloss.NewStyle().Foreground(successColor)
 
 	// Title
-	title := titleStyle.Render("fp logs")
+	title := titleStyle.Render("footprint logs")
 
 	// Session duration
 	duration := m.sessionDuration()
@@ -122,10 +121,13 @@ func (m *logsModel) buildStatsPanel(layout *splitpanel.Layout, height int) split
 	lines = append(lines, headerStyle.Render("STATS"))
 	lines = append(lines, "")
 
-	// Total lines
-	lines = append(lines, labelStyle.Render("Total: ")+valueStyle.Render(fmt.Sprintf("%d", len(m.lines))))
+	// Total ever (all lines in file)
+	lines = append(lines, labelStyle.Render("Total: ")+valueStyle.Render(fmt.Sprintf("%d", m.totalEver)))
 
-	// Filtered count
+	// Session lines (new during this session)
+	lines = append(lines, labelStyle.Render("Session: ")+valueStyle.Render(fmt.Sprintf("%d", m.sessionLines)))
+
+	// Filtered count (if filtering)
 	filtered := m.filteredLines()
 	if m.filterLevel != "" || m.filterQuery != "" {
 		lines = append(lines, labelStyle.Render("Shown: ")+valueStyle.Render(fmt.Sprintf("%d", len(filtered))))
@@ -133,54 +135,41 @@ func (m *logsModel) buildStatsPanel(layout *splitpanel.Layout, height int) split
 
 	lines = append(lines, "")
 
-	// By level
-	if len(m.byLevel) > 0 {
+	// By level (show totals)
+	if len(m.byLevelTotal) > 0 {
 		lines = append(lines, headerStyle.Render("BY LEVEL"))
 		lines = append(lines, "")
 
 		// Sort levels for consistent display
 		levelOrder := []string{"ERROR", "WARN", "INFO", "DEBUG"}
 		for _, level := range levelOrder {
-			if count, ok := m.byLevel[level]; ok {
+			total := m.byLevelTotal[level]
+			session := m.byLevel[level]
+			if total > 0 {
 				style := m.levelStyle(level)
 				indicator := "  "
 				if m.filterLevel == level {
 					indicator = "> "
 				}
-				lines = append(lines, indicator+style.Render(fmt.Sprintf("%-6s", level))+labelStyle.Render(fmt.Sprintf(" %d", count)))
-			}
-		}
-
-		// Any other levels
-		var otherLevels []string
-		for level := range m.byLevel {
-			found := false
-			for _, l := range levelOrder {
-				if level == l {
-					found = true
-					break
+				// Show total and session count if different
+				countStr := fmt.Sprintf("%d", total)
+				if session > 0 {
+					countStr = fmt.Sprintf("%d (+%d)", total, session)
 				}
+				lines = append(lines, indicator+style.Render(fmt.Sprintf("%-6s", level))+labelStyle.Render(" "+countStr))
 			}
-			if !found {
-				otherLevels = append(otherLevels, level)
-			}
-		}
-		sort.Strings(otherLevels)
-		for _, level := range otherLevels {
-			count := m.byLevel[level]
-			lines = append(lines, labelStyle.Render(fmt.Sprintf("  %-6s %d", level, count)))
 		}
 	}
 
 	lines = append(lines, "")
 
-	// Key hints
+	// Key hints - color coded
 	lines = append(lines, headerStyle.Render("FILTERS"))
 	lines = append(lines, "")
-	lines = append(lines, labelStyle.Render("e ERROR"))
-	lines = append(lines, labelStyle.Render("w WARN"))
-	lines = append(lines, labelStyle.Render("i INFO"))
-	lines = append(lines, labelStyle.Render("d DEBUG"))
+	lines = append(lines, labelStyle.Render("e ")+m.levelStyle("ERROR").Render("ERROR"))
+	lines = append(lines, labelStyle.Render("w ")+m.levelStyle("WARN").Render("WARN"))
+	lines = append(lines, labelStyle.Render("i ")+m.levelStyle("INFO").Render("INFO"))
+	lines = append(lines, labelStyle.Render("d ")+m.levelStyle("DEBUG").Render("DEBUG"))
 	lines = append(lines, labelStyle.Render("c clear"))
 
 	return splitpanel.Panel{
@@ -236,63 +225,87 @@ func (m logsModel) formatLogLine(logLine LogLine, width int, selected bool) stri
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-
-	// Format: [timestamp] LEVEL message
-	var line string
-
-	if logLine.Timestamp != "" {
-		// Shorten timestamp (just time part)
-		ts := logLine.Timestamp
-		if len(ts) > 11 {
-			ts = ts[11:] // Skip date, keep time
-		}
-		line = "[" + ts + "] "
-	}
-
-	if logLine.Level != "" {
-		line += logLine.Level + ": "
-	}
-
-	if logLine.Message != "" {
-		line += logLine.Message
-	} else if logLine.Raw != "" && logLine.Timestamp == "" {
-		line = logLine.Raw
-	}
-
-	// Truncate if too long
-	if len(line) > width-4 {
-		line = line[:width-7] + "..."
-	}
+	successColor := lipgloss.Color(colors.Success)
 
 	prefix := "  "
 	if selected {
 		prefix = "> "
 	}
 
+	// Build plain text version for selected (inverted) display
+	var plainParts []string
+
+	// Time (just HH:MM:SS)
+	ts := ""
+	if logLine.Timestamp != "" {
+		ts = logLine.Timestamp
+		if len(ts) > 11 {
+			ts = ts[11:] // Skip date, keep time
+		}
+		plainParts = append(plainParts, ts)
+	}
+
+	// Level
+	if logLine.Level != "" {
+		plainParts = append(plainParts, fmt.Sprintf("%-5s", logLine.Level))
+	}
+
+	// Caller (file:line)
+	caller := ""
+	if logLine.Caller != "" {
+		caller = logLine.Caller
+		if len(caller) > 18 {
+			caller = caller[:15] + "..."
+		}
+		plainParts = append(plainParts, fmt.Sprintf("%-18s", caller))
+	}
+
+	// Message
+	msg := logLine.Message
+	if msg == "" && logLine.Raw != "" && logLine.Timestamp == "" {
+		msg = logLine.Raw
+	}
+
+	// Calculate available width for message
+	fixedWidth := 2 + 8 + 1 + 5 + 1 + 18 + 1 // prefix + time + space + level + space + caller + space
+	msgWidth := width - fixedWidth
+	if msgWidth < 10 {
+		msgWidth = 10
+	}
+	if len(msg) > msgWidth {
+		msg = msg[:msgWidth-3] + "..."
+	}
+	plainParts = append(plainParts, msg)
+
+	plainLine := strings.Join(plainParts, " ")
+
 	if selected {
 		style := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("0")).
 			Background(infoColor)
-		return style.Render(prefix + line)
+		return style.Render(prefix + plainLine)
 	}
 
-	// Color by level
+	// Styled version
+	tsStyle := lipgloss.NewStyle().Foreground(mutedColor)
+	callerStyle := lipgloss.NewStyle().Foreground(successColor)
+	msgStyle := lipgloss.NewStyle().Foreground(mutedColor)
+
+	var styledParts []string
+	if ts != "" {
+		styledParts = append(styledParts, tsStyle.Render(ts))
+	}
 	if logLine.Level != "" {
 		levelStyle := m.levelStyle(logLine.Level)
-		tsStyle := lipgloss.NewStyle().Foreground(mutedColor)
-
-		if logLine.Timestamp != "" {
-			ts := logLine.Timestamp
-			if len(ts) > 11 {
-				ts = ts[11:]
-			}
-			return prefix + tsStyle.Render("["+ts+"] ") + levelStyle.Render(logLine.Level+": "+logLine.Message)
-		}
-		return prefix + levelStyle.Render(line)
+		styledParts = append(styledParts, levelStyle.Render(fmt.Sprintf("%-5s", logLine.Level)))
 	}
+	if caller != "" {
+		styledParts = append(styledParts, callerStyle.Render(fmt.Sprintf("%-18s", caller)))
+	}
+	styledParts = append(styledParts, msgStyle.Render(msg))
 
-	return prefix + lipgloss.NewStyle().Foreground(mutedColor).Render(line)
+	return prefix + strings.Join(styledParts, " ")
 }
 
 func (m *logsModel) buildDrawerPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
@@ -328,6 +341,13 @@ func (m *logsModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spli
 		if logLine.Timestamp != "" {
 			lines = append(lines, labelStyle.Render("Timestamp:"))
 			lines = append(lines, valueStyle.Render("  "+logLine.Timestamp))
+			lines = append(lines, "")
+		}
+
+		// Caller (source file)
+		if logLine.Caller != "" {
+			lines = append(lines, labelStyle.Render("Source:"))
+			lines = append(lines, valueStyle.Render("  "+logLine.Caller))
 			lines = append(lines, "")
 		}
 

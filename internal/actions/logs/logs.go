@@ -159,17 +159,20 @@ func clear(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 }
 
 // colorizeLogLine adds color to log lines based on level
+// Supports both old format: [timestamp] LEVEL: message
+// And new format: [timestamp] LEVEL file:line: message
 func colorizeLogLine(line string) string {
-	if strings.Contains(line, "] ERROR:") {
+	// Check for level after the timestamp bracket
+	if strings.Contains(line, "] ERROR ") || strings.Contains(line, "] ERROR:") {
 		return style.Error(line)
 	}
-	if strings.Contains(line, "] WARN:") {
+	if strings.Contains(line, "] WARN ") || strings.Contains(line, "] WARN:") {
 		return style.Warning(line)
 	}
-	if strings.Contains(line, "] INFO:") {
+	if strings.Contains(line, "] INFO ") || strings.Contains(line, "] INFO:") {
 		return style.Info(line)
 	}
-	if strings.Contains(line, "] DEBUG:") {
+	if strings.Contains(line, "] DEBUG ") || strings.Contains(line, "] DEBUG:") {
 		return style.Muted(line)
 	}
 	return line

@@ -97,11 +97,3 @@ func LogFilePath() string {
 	return filepath.Join(AppDataDir(), "fp.log")
 }
 
-// StateFilePath returns the path to the internal state file.
-// State is stored in the application data directory:
-//   - macOS: ~/Library/Application Support/footprint/state
-//   - Linux: $XDG_CONFIG_HOME/footprint/state or ~/.config/footprint/state
-//   - Windows: %AppData%\footprint\state
-func StateFilePath() string {
-	return filepath.Join(AppDataDir(), "state")
-}

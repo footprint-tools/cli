@@ -30,12 +30,12 @@ func (m watchModel) View() string {
 	cfg := splitpanel.Config{
 		SidebarWidthPercent: 0.20,
 		SidebarMinWidth:     18,
-		SidebarMaxWidth:     24,
+		SidebarMaxWidth:     26,
 		HasDrawer:           true,
 		DrawerWidthPercent:  0.35,
 	}
 	layout := splitpanel.NewLayout(m.width, cfg, m.colors)
-	layout.SetFocus(false) // Stats sidebar is never focused
+	layout.SetFocusedPanel(m.focusedPanel)
 	layout.SetDrawerOpen(m.drawerOpen)
 
 	// Build panels
@@ -69,7 +69,7 @@ func (m watchModel) renderHeader() string {
 	warnStyle := lipgloss.NewStyle().Foreground(warnColor)
 
 	// Title
-	title := titleStyle.Render("fp watch")
+	title := titleStyle.Render("footprint watch")
 
 	// Session duration
 	duration := m.sessionDuration()
@@ -84,10 +84,13 @@ func (m watchModel) renderHeader() string {
 		status = warnStyle.Render(" [PAUSED]")
 	}
 
-	// Filter indicator
+	// Filter indicators
 	filterStr := ""
+	if m.filterSource != -1 {
+		filterStr = mutedStyle.Render(" | Source: ") + warnStyle.Render(sourceName(m.filterSource))
+	}
 	if m.filterQuery != "" {
-		filterStr = mutedStyle.Render(fmt.Sprintf(" | Filter: %s", m.filterQuery))
+		filterStr += mutedStyle.Render(" | Search: ") + mutedStyle.Render(m.filterQuery)
 	}
 
 	headerContent := title + mutedStyle.Render(" | ") +
@@ -106,11 +109,13 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
-	successColor := lipgloss.Color(colors.Success)
+	headerColor := lipgloss.Color(colors.Header)
+	warnColor := lipgloss.Color(colors.Warning)
 
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(successColor)
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(headerColor)
 	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	valueStyle := lipgloss.NewStyle().Foreground(infoColor)
+	keyStyle := lipgloss.NewStyle().Foreground(warnColor).Bold(true)
 
 	var lines []string
 
@@ -121,37 +126,49 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 	// Total events
 	lines = append(lines, labelStyle.Render("Events: ")+valueStyle.Render(fmt.Sprintf("%d", m.totalEvents)))
 
-	// Buffer info
-	lines = append(lines, labelStyle.Render("Buffer: ")+valueStyle.Render(fmt.Sprintf("%d/%d", len(m.events), maxEvents)))
-
 	lines = append(lines, "")
 
-	// By type
-	if len(m.byType) > 0 {
-		lines = append(lines, headerStyle.Render("BY TYPE"))
-		lines = append(lines, "")
+	// Source type filters with individual colors
+	lines = append(lines, headerStyle.Render("BY SOURCE"))
+	lines = append(lines, "")
 
-		// Sort types for consistent display
-		var types []string
-		for t := range m.byType {
-			types = append(types, t)
-		}
-		sort.Strings(types)
-
-		for _, t := range types {
-			count := m.byType[t]
-			line := fmt.Sprintf("  %-10s %d", t, count)
-			lines = append(lines, labelStyle.Render(line))
-		}
-		lines = append(lines, "")
+	sourceFilters := []struct {
+		key    string
+		source store.Source
+		name   string
+		color  string
+	}{
+		{"1", store.SourcePostCommit, "POST-COMMIT", colors.Color1},
+		{"2", store.SourcePostRewrite, "POST-REWRITE", colors.Color2},
+		{"3", store.SourcePostCheckout, "POST-CHECKOUT", colors.Color3},
+		{"4", store.SourcePostMerge, "POST-MERGE", colors.Color4},
+		{"5", store.SourcePrePush, "PRE-PUSH", colors.Color5},
+		{"6", store.SourceManual, "MANUAL", colors.Color7},
+		{"7", store.SourceBackfill, "BACKFILL", colors.Color6},
 	}
 
-	// By repo
+	for _, sf := range sourceFilters {
+		count := m.countBySource(sf.source)
+		indicator := "  "
+		if m.filterSource == sf.source {
+			indicator = "> "
+		}
+		sourceNameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(sf.color)).Bold(true)
+		// Key, name, and count on same line
+		countDisplay := valueStyle.Render(fmt.Sprintf("%d", count))
+		if count == 0 {
+			countDisplay = labelStyle.Render("0")
+		}
+		lines = append(lines, indicator+keyStyle.Render(sf.key)+" "+sourceNameStyle.Render(sf.name)+" "+countDisplay)
+	}
+
+	// By repo - compact format
 	if len(m.byRepo) > 0 {
+		lines = append(lines, "") // Margin before BY REPO
 		lines = append(lines, headerStyle.Render("BY REPO"))
 		lines = append(lines, "")
 
-		// Sort repos by count (descending)
+		// Sort repos by count (descending), then by name (ascending) for stability
 		type repoCount struct {
 			name  string
 			count int
@@ -161,30 +178,70 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 			repos = append(repos, repoCount{name, count})
 		}
 		sort.Slice(repos, func(i, j int) bool {
-			return repos[i].count > repos[j].count
+			if repos[i].count != repos[j].count {
+				return repos[i].count > repos[j].count
+			}
+			return repos[i].name < repos[j].name
 		})
 
-		// Show top repos (limit to fit)
+		// Show top repos - name and count on same line
 		width := layout.SidebarContentWidth()
-		maxRepos := max((height-12)/1, 3)
+		maxRepos := max((height-12), 3) // 1 line per repo now
 		maxRepos = min(maxRepos, len(repos))
 
 		for i := 0; i < maxRepos; i++ {
 			r := repos[i]
+			countStr := fmt.Sprintf(" %d", r.count)
+			maxNameWidth := width - len(countStr) - 2 // -2 for indent
 			name := r.name
-			if len(name) > width-8 {
-				name = name[:width-11] + "..."
+			if len(name) > maxNameWidth {
+				name = name[:maxNameWidth-3] + "..."
 			}
-			line := fmt.Sprintf("  %-*s %d", width-8, name, r.count)
-			lines = append(lines, labelStyle.Render(line))
+			lines = append(lines, "  "+valueStyle.Render(name)+labelStyle.Render(countStr))
 		}
 	}
 
-	return splitpanel.Panel{
-		Lines:      lines,
-		ScrollPos:  0,
-		TotalItems: len(lines),
+	// Handle scrolling
+	totalLines := len(lines)
+	visibleHeight := height - 2
+	if visibleHeight < 1 {
+		visibleHeight = 1
 	}
+	scrollPos := m.sidebarScroll
+	maxScroll := totalLines - visibleHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if scrollPos > maxScroll {
+		scrollPos = maxScroll
+	}
+
+	// Slice to visible lines
+	endIdx := scrollPos + visibleHeight
+	if endIdx > totalLines {
+		endIdx = totalLines
+	}
+	visibleLines := lines
+	if scrollPos < totalLines {
+		visibleLines = lines[scrollPos:endIdx]
+	}
+
+	return splitpanel.Panel{
+		Lines:      visibleLines,
+		ScrollPos:  scrollPos,
+		TotalItems: totalLines,
+	}
+}
+
+// countBySource counts events by source type
+func (m *watchModel) countBySource(source store.Source) int {
+	count := 0
+	for _, e := range m.events {
+		if e.Source == source {
+			count++
+		}
+	}
+	return count
 }
 
 func (m *watchModel) buildEventsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
@@ -194,13 +251,18 @@ func (m *watchModel) buildEventsPanel(layout *splitpanel.Layout, height int) spl
 	filtered := m.filteredEvents()
 	visibleHeight := height - 2 // Account for panel border
 
-	// Adjust scroll to keep cursor visible
-	scrollOffset := m.eventScroll
-	if m.cursor < scrollOffset {
-		scrollOffset = m.cursor
-	}
-	if m.cursor >= scrollOffset+visibleHeight {
-		scrollOffset = m.cursor - visibleHeight + 1
+	// Scroll position logic:
+	// - When drawer is open: stay at top (0) to show newest, selection may be off-screen
+	// - When drawer is closed: follow cursor
+	scrollOffset := 0
+	if !m.drawerOpen {
+		scrollOffset = m.eventScroll
+		if m.cursor < scrollOffset {
+			scrollOffset = m.cursor
+		}
+		if m.cursor >= scrollOffset+visibleHeight {
+			scrollOffset = m.cursor - visibleHeight + 1
+		}
 	}
 
 	var lines []string
@@ -216,6 +278,7 @@ func (m *watchModel) buildEventsPanel(layout *splitpanel.Layout, height int) spl
 	} else {
 		for i := scrollOffset; i < len(filtered) && len(lines) < visibleHeight; i++ {
 			event := filtered[i]
+			// Show selection highlight even if drawer is open
 			line := m.formatEventLine(event, width, i == m.cursor)
 			lines = append(lines, line)
 		}
@@ -233,31 +296,70 @@ func (m watchModel) formatEventLine(event store.RepoEvent, width int, selected b
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
 	successColor := lipgloss.Color(colors.Success)
+	errorColor := lipgloss.Color(colors.Error)
 
-	// Date and time (e.g., "23/01 15:04")
-	dateStr := format.DateTimeShort(event.Timestamp)
+	// Get cached metadata
+	meta := m.getCommitMeta(event.RepoPath, event.Commit)
+
+	// Column definitions (predefined widths)
+	const (
+		colTime    = 5  // "15:04"
+		colSource  = 13 // "POST-CHECKOUT"
+		colRepo    = 12 // repo name
+		colBranch  = 12 // branch name
+		colCommit  = 7  // short hash
+		colAdd     = 6  // "+1234"
+		colDel     = 6  // "-1234"
+		colFiles   = 4  // "12F"
+	)
+
+	// Source type (full name) and color
+	source := sourceName(event.Source)
+	sourceColor := m.sourceColor(event.Source)
+
+	// Time only (e.g., "15:04")
+	timeStr := format.Time(event.Timestamp)
 
 	// Repo name (basename)
 	repoName := filepath.Base(event.RepoPath)
-	if len(repoName) > 14 {
-		repoName = repoName[:11] + "..."
+	if len(repoName) > colRepo {
+		repoName = repoName[:colRepo-3] + "..."
+	}
+
+	// Branch name
+	branch := event.Branch
+	if len(branch) > colBranch {
+		branch = branch[:colBranch-3] + "..."
 	}
 
 	// Commit (short)
 	commitShort := event.Commit
-	if len(commitShort) > 7 {
-		commitShort = commitShort[:7]
+	if len(commitShort) > colCommit {
+		commitShort = commitShort[:colCommit]
 	}
 
-	// Commit message
-	message := m.getCommitMessage(event.Commit)
-	// Calculate available space for message
-	// Format: "  Jan 02 15:04  repo          abc1234  message"
-	fixedWidth := 2 + 12 + 2 + 14 + 1 + 7 + 2 // prefix + date + spaces + repo + space + commit + spaces
-	msgWidth := width - fixedWidth
-	if msgWidth < 10 {
-		msgWidth = 10
+	// Stats columns
+	addStr := ""
+	if meta.Insertions > 0 {
+		addStr = fmt.Sprintf("+%d", meta.Insertions)
 	}
+	delStr := ""
+	if meta.Deletions > 0 {
+		delStr = fmt.Sprintf("-%d", meta.Deletions)
+	}
+	filesStr := ""
+	if meta.FilesChanged > 0 {
+		filesStr = fmt.Sprintf("%dF", meta.FilesChanged)
+	}
+
+	// Commit message - remaining space
+	// Fixed: 2 (prefix) + 5 + 1 + 13 + 1 + 12 + 1 + 12 + 1 + 7 + 1 + 6 + 1 + 6 + 1 + 4 + 1 = 75
+	fixedWidth := 75
+	msgWidth := width - fixedWidth
+	if msgWidth < 5 {
+		msgWidth = 5
+	}
+	message := meta.Subject
 	if len(message) > msgWidth {
 		message = message[:msgWidth-3] + "..."
 	}
@@ -269,33 +371,117 @@ func (m watchModel) formatEventLine(event store.RepoEvent, width int, selected b
 	}
 
 	// Style components
-	dateStyle := lipgloss.NewStyle().Foreground(mutedColor)
+	timeStyle := lipgloss.NewStyle().Foreground(mutedColor)
+	sourceStyle := lipgloss.NewStyle().Foreground(sourceColor).Bold(true)
 	repoStyle := lipgloss.NewStyle().Foreground(infoColor)
-	commitStyle := lipgloss.NewStyle().Foreground(successColor)
+	branchStyle := lipgloss.NewStyle().Foreground(mutedColor)
+	commitStyle := lipgloss.NewStyle().Foreground(infoColor)
+	// Additions/deletions with background color and contrasting text
+	addBgStyle := lipgloss.NewStyle().Background(successColor).Foreground(lipgloss.Color("0"))
+	delBgStyle := lipgloss.NewStyle().Background(errorColor).Foreground(lipgloss.Color("0"))
+	filesStyle := lipgloss.NewStyle().Foreground(infoColor)
 	msgStyle := lipgloss.NewStyle().Foreground(mutedColor)
 
+	// Format stats - right aligned in column
+	addRendered := "      " // 6 spaces
+	if addStr != "" {
+		padding := 6 - len(addStr)
+		if selected {
+			addRendered = strings.Repeat(" ", padding) + addStr
+		} else {
+			addRendered = strings.Repeat(" ", padding) + addBgStyle.Render(addStr)
+		}
+	}
+	delRendered := "      " // 6 spaces
+	if delStr != "" {
+		padding := 6 - len(delStr)
+		if selected {
+			delRendered = strings.Repeat(" ", padding) + delStr
+		} else {
+			delRendered = strings.Repeat(" ", padding) + delBgStyle.Render(delStr)
+		}
+	}
+
 	if selected {
-		// Selected row - use inverted colors
+		// Selected row - use inverted colors with source color as background
 		style := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("0")).
-			Background(infoColor)
-		line := fmt.Sprintf("%s%-12s  %-14s %-7s  %s",
-			prefix, dateStr, repoName, commitShort, message)
-		if len(line) > width {
-			line = line[:width]
-		}
+			Background(sourceColor)
+
+		// Same column structure as non-selected
+		line := prefix +
+			fmt.Sprintf("%-5s", timeStr) + " " +
+			fmt.Sprintf("%-13s", source) + " " +
+			fmt.Sprintf("%-12s", repoName) + " " +
+			fmt.Sprintf("%-12s", branch) + " " +
+			fmt.Sprintf("%-7s", commitShort) + " " +
+			addRendered + " " +
+			delRendered + " " +
+			fmt.Sprintf("%4s", filesStr) + " " +
+			message
+
 		return style.Render(line)
 	}
 
-	// Normal row - use colored components
+	// Normal row - columns: time | source | repo | branch | commit | +add | -del | files | message
 	line := prefix +
-		dateStyle.Render(fmt.Sprintf("%-12s", dateStr)) + "  " +
-		repoStyle.Render(fmt.Sprintf("%-14s", repoName)) + " " +
-		commitStyle.Render(fmt.Sprintf("%-7s", commitShort)) + "  " +
+		timeStyle.Render(fmt.Sprintf("%-5s", timeStr)) + " " +
+		sourceStyle.Render(fmt.Sprintf("%-13s", source)) + " " +
+		repoStyle.Render(fmt.Sprintf("%-12s", repoName)) + " " +
+		branchStyle.Render(fmt.Sprintf("%-12s", branch)) + " " +
+		commitStyle.Render(fmt.Sprintf("%-7s", commitShort)) + " " +
+		addRendered + " " +
+		delRendered + " " +
+		filesStyle.Render(fmt.Sprintf("%4s", filesStr)) + " " +
 		msgStyle.Render(message)
 
 	return line
+}
+
+// sourceColor returns the color for the given source type
+func (m watchModel) sourceColor(source store.Source) lipgloss.Color {
+	colors := m.colors
+	switch source {
+	case store.SourcePostCommit:
+		return lipgloss.Color(colors.Color1)
+	case store.SourcePostRewrite:
+		return lipgloss.Color(colors.Color2)
+	case store.SourcePostCheckout:
+		return lipgloss.Color(colors.Color3)
+	case store.SourcePostMerge:
+		return lipgloss.Color(colors.Color4)
+	case store.SourcePrePush:
+		return lipgloss.Color(colors.Color5)
+	case store.SourceBackfill:
+		return lipgloss.Color(colors.Color6)
+	case store.SourceManual:
+		return lipgloss.Color(colors.Color7)
+	default:
+		return lipgloss.Color(colors.Muted)
+	}
+}
+
+// sourceName returns the full hook name for the event source
+func sourceName(source store.Source) string {
+	switch source {
+	case store.SourcePostCommit:
+		return "POST-COMMIT"
+	case store.SourcePostRewrite:
+		return "POST-REWRITE"
+	case store.SourcePostCheckout:
+		return "POST-CHECKOUT"
+	case store.SourcePostMerge:
+		return "POST-MERGE"
+	case store.SourcePrePush:
+		return "PRE-PUSH"
+	case store.SourceManual:
+		return "MANUAL"
+	case store.SourceBackfill:
+		return "BACKFILL"
+	default:
+		return "UNKNOWN"
+	}
 }
 
 func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
@@ -303,13 +489,46 @@ func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
 	successColor := lipgloss.Color(colors.Success)
+	errorColor := lipgloss.Color(colors.Error)
+	headerColor := lipgloss.Color(colors.Header)
 
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(successColor)
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(headerColor)
 	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	valueStyle := lipgloss.NewStyle().Foreground(infoColor)
+	clickableStyle := lipgloss.NewStyle().Foreground(infoColor).Underline(true)
+	addStyle := lipgloss.NewStyle().Foreground(successColor)
+	delStyle := lipgloss.NewStyle().Foreground(errorColor)
 
 	var lines []string
 	width := layout.DrawerContentWidth()
+
+	addClickable := func(label, value string) {
+		labelWidth := len(label)
+		valueWidth := width - labelWidth - 1 // -1 for safety margin
+		if valueWidth < 10 {
+			valueWidth = 10
+		}
+
+		if len(value) <= valueWidth {
+			// Value fits on one line
+			lines = append(lines, labelStyle.Render(label)+clickableStyle.Render(value))
+		} else {
+			// Value needs multiple lines
+			lines = append(lines, labelStyle.Render(label)+clickableStyle.Render(value[:valueWidth]))
+
+			// Continuation lines: indented to align with value
+			indent := strings.Repeat(" ", labelWidth)
+			remaining := value[valueWidth:]
+			for len(remaining) > 0 {
+				chunkSize := valueWidth
+				if chunkSize > len(remaining) {
+					chunkSize = len(remaining)
+				}
+				lines = append(lines, indent+clickableStyle.Render(remaining[:chunkSize]))
+				remaining = remaining[chunkSize:]
+			}
+		}
+	}
 
 	if m.drawerDetail == nil {
 		lines = append(lines, labelStyle.Render("No event selected"))
@@ -317,116 +536,148 @@ func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		event := m.drawerDetail.Event
 		meta := m.drawerDetail.Meta
 
-		// Header
-		lines = append(lines, headerStyle.Render("EVENT DETAIL"))
-		lines = append(lines, "")
+		// === IMPORTANT INFO AT TOP ===
 
-		// Type and commit
-		lines = append(lines, labelStyle.Render("Type: ")+valueStyle.Render("commit"))
-		commitShort := event.Commit
-		if len(commitShort) > 10 {
-			commitShort = commitShort[:10]
-		}
-		lines = append(lines, labelStyle.Render("Commit: ")+valueStyle.Render(commitShort))
-		lines = append(lines, "")
-
-		// Repository
-		lines = append(lines, labelStyle.Render("Repository:"))
-		repoName := filepath.Base(event.RepoPath)
-		lines = append(lines, valueStyle.Render("  "+repoName))
-		lines = append(lines, "")
-
-		// Branch
-		lines = append(lines, labelStyle.Render("Branch: ")+valueStyle.Render(event.Branch))
-		lines = append(lines, "")
-
-		// Timestamps
-		lines = append(lines, headerStyle.Render("TIMESTAMPS"))
-		lines = append(lines, "")
-		if meta.AuthoredAt != "" {
-			lines = append(lines, labelStyle.Render("  Authored: ")+valueStyle.Render(meta.AuthoredAt))
-		}
-		lines = append(lines, labelStyle.Render("  Recorded: ")+valueStyle.Render(format.Full(event.Timestamp)))
-		lines = append(lines, "")
-
-		// Author
-		if meta.AuthorName != "" {
-			lines = append(lines, headerStyle.Render("AUTHOR"))
-			lines = append(lines, "")
-			lines = append(lines, valueStyle.Render("  "+meta.AuthorName))
-			if meta.AuthorEmail != "" {
-				lines = append(lines, labelStyle.Render("  "+meta.AuthorEmail))
-			}
-			lines = append(lines, "")
-		}
-
-		// Committer (only show if different from author)
-		if meta.CommitterName != "" && (meta.CommitterName != meta.AuthorName || meta.CommitterEmail != meta.AuthorEmail) {
-			lines = append(lines, headerStyle.Render("COMMITTER"))
-			lines = append(lines, "")
-			lines = append(lines, valueStyle.Render("  "+meta.CommitterName))
-			if meta.CommitterEmail != "" {
-				lines = append(lines, labelStyle.Render("  "+meta.CommitterEmail))
-			}
-			lines = append(lines, "")
-		}
-
-		// Message
+		// Commit message (most important)
 		if meta.Subject != "" {
 			lines = append(lines, headerStyle.Render("MESSAGE"))
 			lines = append(lines, "")
-			// Wrap message
-			wrapped := wrapTextSimple(meta.Subject, width-4)
+			wrapped := wrapTextSimple(meta.Subject, width-2)
 			for _, line := range strings.Split(wrapped, "\n") {
-				lines = append(lines, valueStyle.Render("  "+line))
+				lines = append(lines, valueStyle.Render(line))
 			}
 			lines = append(lines, "")
 		}
 
-		// Stats
+		// Stats (quick overview)
 		if meta.FilesChanged > 0 || meta.Insertions > 0 || meta.Deletions > 0 {
-			lines = append(lines, headerStyle.Render("STATS"))
-			lines = append(lines, "")
-
-			var statsBuilder strings.Builder
-			fmt.Fprintf(&statsBuilder, "  %d files", meta.FilesChanged)
+			statsLine := ""
+			if meta.FilesChanged > 0 {
+				statsLine += fmt.Sprintf("%d files", meta.FilesChanged)
+			}
 			if meta.Insertions > 0 {
-				fmt.Fprintf(&statsBuilder, " +%d", meta.Insertions)
+				if statsLine != "" {
+					statsLine += "  "
+				}
+				statsLine += addStyle.Render(fmt.Sprintf("+%d", meta.Insertions))
 			}
 			if meta.Deletions > 0 {
-				fmt.Fprintf(&statsBuilder, " -%d", meta.Deletions)
+				if statsLine != "" {
+					statsLine += "  "
+				}
+				statsLine += delStyle.Render(fmt.Sprintf("-%d", meta.Deletions))
 			}
-			lines = append(lines, valueStyle.Render(statsBuilder.String()))
+			lines = append(lines, statsLine)
 			lines = append(lines, "")
 		}
 
-		// Status
-		lines = append(lines, headerStyle.Render("STATUS"))
+		// Source and branch
+		sourceColor := m.sourceColor(event.Source)
+		sourceStyle := lipgloss.NewStyle().Foreground(sourceColor).Bold(true)
+		lines = append(lines, sourceStyle.Render(sourceName(event.Source))+" "+labelStyle.Render("on")+" "+valueStyle.Render(event.Branch))
 		lines = append(lines, "")
-		lines = append(lines, valueStyle.Render("  "+event.Status.String()))
 
-		// Parents (shows for merges)
-		if meta.ParentCommits != "" {
-			isMerge := strings.Contains(meta.ParentCommits, " ")
-			if isMerge {
-				lines = append(lines, "")
-				lines = append(lines, headerStyle.Render("MERGE"))
-				lines = append(lines, "")
-				parents := strings.Split(meta.ParentCommits, " ")
-				for i, parent := range parents {
-					if len(parent) > 10 {
-						parent = parent[:10]
+		// === CLICKABLE DETAILS ===
+		lines = append(lines, headerStyle.Render("DETAILS"))
+		lines = append(lines, "")
+
+		// Commit hash (clickable)
+		addClickable("Commit:  ", event.Commit)
+
+		// Repo name (clickable)
+		repoName := filepath.Base(event.RepoPath)
+		addClickable("Repo:    ", repoName)
+
+		// Branch (clickable)
+		addClickable("Branch:  ", event.Branch)
+
+		lines = append(lines, "")
+
+		// Author (clickable)
+		if meta.AuthorName != "" {
+			addClickable("Author:  ", meta.AuthorName)
+			if meta.AuthorEmail != "" {
+				addClickable("Email:   ", meta.AuthorEmail)
+			}
+		}
+
+		lines = append(lines, "")
+
+		// === MORE INFO ===
+		lines = append(lines, headerStyle.Render("MORE"))
+		lines = append(lines, "")
+
+		// Path (clickable)
+		addClickable("Path:    ", event.RepoPath)
+
+		// ID (clickable)
+		addClickable("ID:      ", string(event.RepoID))
+
+		// Timestamps
+		if meta.AuthoredAt != "" {
+			lines = append(lines, labelStyle.Render("Authored: ")+labelStyle.Render(meta.AuthoredAt))
+		}
+		lines = append(lines, labelStyle.Render("Recorded: ")+labelStyle.Render(format.Full(event.Timestamp)))
+
+		// Body (if any)
+		if meta.Body != "" {
+			lines = append(lines, "")
+			lines = append(lines, headerStyle.Render("DESCRIPTION"))
+			lines = append(lines, "")
+			bodyLines := strings.Split(meta.Body, "\n")
+			for _, bodyLine := range bodyLines {
+				if strings.TrimSpace(bodyLine) == "" {
+					lines = append(lines, "")
+				} else {
+					wrapped := wrapTextSimple(bodyLine, width-2)
+					for _, wl := range strings.Split(wrapped, "\n") {
+						lines = append(lines, labelStyle.Render(wl))
 					}
-					lines = append(lines, labelStyle.Render(fmt.Sprintf("  Parent %d: ", i+1))+valueStyle.Render(parent))
 				}
+			}
+		}
+
+		// Parents (for merges)
+		if meta.ParentCommits != "" && strings.Contains(meta.ParentCommits, " ") {
+			lines = append(lines, "")
+			lines = append(lines, headerStyle.Render("MERGE PARENTS"))
+			lines = append(lines, "")
+			parents := strings.Split(meta.ParentCommits, " ")
+			for i, parent := range parents {
+				if len(parent) > 10 {
+					parent = parent[:10]
+				}
+				lines = append(lines, labelStyle.Render(fmt.Sprintf("  %d: ", i+1))+valueStyle.Render(parent))
 			}
 		}
 	}
 
+	// Clamp scroll position and slice visible lines
+	visibleHeight := height - 2
+	if visibleHeight < 1 {
+		visibleHeight = 1
+	}
+	totalLines := len(lines)
+	scrollPos := m.drawerScroll
+	maxScroll := totalLines - visibleHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if scrollPos > maxScroll {
+		scrollPos = maxScroll
+	}
+
+	// Slice to visible lines only
+	endIdx := scrollPos + visibleHeight
+	if endIdx > totalLines {
+		endIdx = totalLines
+	}
+	visibleLines := lines[scrollPos:endIdx]
+
 	return splitpanel.Panel{
-		Lines:      lines,
-		ScrollPos:  0,
-		TotalItems: len(lines),
+		Lines:      visibleLines,
+		ScrollPos:  scrollPos,
+		TotalItems: totalLines,
 	}
 }
 
@@ -447,16 +698,32 @@ func (m watchModel) renderFooter() string {
 	sep := sepStyle.Render(" | ")
 
 	var footer string
-	if m.drawerOpen {
-		footer = keyStyle.Render("Esc") + labelStyle.Render(" close") + sep +
-			keyStyle.Render("jk") + labelStyle.Render(" navigate") + sep +
-			labelStyle.Render("click outside to close")
+	tabHint := keyStyle.Render("Tab") + labelStyle.Render(" focus") + sep
+
+	if m.focusedPanel == 2 && m.drawerOpen {
+		// Drawer focused
+		footer = tabHint +
+			keyStyle.Render("Esc") + labelStyle.Render(" close") + sep +
+			keyStyle.Render("j/↓") + labelStyle.Render(" down") + sep +
+			keyStyle.Render("k/↑") + labelStyle.Render(" up") + sep +
+			keyStyle.Render("g") + labelStyle.Render(" top") + sep +
+			keyStyle.Render("G") + labelStyle.Render(" bottom")
+	} else if m.focusedPanel == 1 {
+		// Sidebar focused
+		footer = tabHint +
+			keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
+			keyStyle.Render("j/↓") + labelStyle.Render(" scroll") + sep +
+			keyStyle.Render("1-7") + labelStyle.Render(" filter") + sep +
+			keyStyle.Render("c") + labelStyle.Render(" clear")
 	} else {
-		footer = keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
+		// Events focused
+		footer = tabHint +
+			keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
 			keyStyle.Render("p") + labelStyle.Render(" pause") + sep +
-			keyStyle.Render("jk") + labelStyle.Render(" nav") + sep +
+			keyStyle.Render("j/↓") + labelStyle.Render(" ") + keyStyle.Render("k/↑") + sep +
 			keyStyle.Render("Enter") + labelStyle.Render(" detail") + sep +
-			labelStyle.Render("type to filter")
+			keyStyle.Render("1-7") + labelStyle.Render(" source") + sep +
+			keyStyle.Render("c") + labelStyle.Render(" clear")
 	}
 
 	footerStyle := lipgloss.NewStyle().

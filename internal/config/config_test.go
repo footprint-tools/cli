@@ -319,3 +319,213 @@ func TestReadWrite_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
+
+func TestAppendArray(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialLines []string
+		arrayKey     string
+		value        string
+		wantLines    []string
+		wantAdded    bool
+	}{
+		{
+			name:         "add to empty",
+			initialLines: []string{},
+			arrayKey:     "repos",
+			value:        "/path/to/repo",
+			wantLines:    []string{"repos[]=/path/to/repo"},
+			wantAdded:    true,
+		},
+		{
+			name:         "add new value",
+			initialLines: []string{"repos[]=/path/to/repo1"},
+			arrayKey:     "repos",
+			value:        "/path/to/repo2",
+			wantLines:    []string{"repos[]=/path/to/repo1", "repos[]=/path/to/repo2"},
+			wantAdded:    true,
+		},
+		{
+			name:         "value already exists",
+			initialLines: []string{"repos[]=/path/to/repo1"},
+			arrayKey:     "repos",
+			value:        "/path/to/repo1",
+			wantLines:    []string{"repos[]=/path/to/repo1"},
+			wantAdded:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, added := AppendArray(tt.initialLines, tt.arrayKey, tt.value)
+			require.Equal(t, tt.wantLines, got)
+			require.Equal(t, tt.wantAdded, added)
+		})
+	}
+}
+
+func TestRemoveFromArray(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialLines []string
+		arrayKey     string
+		value        string
+		wantLines    []string
+		wantRemoved  bool
+	}{
+		{
+			name:         "remove from empty",
+			initialLines: []string{},
+			arrayKey:     "repos",
+			value:        "/path/to/repo",
+			wantLines:    nil,
+			wantRemoved:  false,
+		},
+		{
+			name:         "remove existing value",
+			initialLines: []string{"repos[]=/path/to/repo1", "repos[]=/path/to/repo2"},
+			arrayKey:     "repos",
+			value:        "/path/to/repo1",
+			wantLines:    []string{"repos[]=/path/to/repo2"},
+			wantRemoved:  true,
+		},
+		{
+			name:         "value not found",
+			initialLines: []string{"repos[]=/path/to/repo1"},
+			arrayKey:     "repos",
+			value:        "/path/to/repo2",
+			wantLines:    []string{"repos[]=/path/to/repo1"},
+			wantRemoved:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, removed := RemoveFromArray(tt.initialLines, tt.arrayKey, tt.value)
+			require.Equal(t, tt.wantLines, got)
+			require.Equal(t, tt.wantRemoved, removed)
+		})
+	}
+}
+
+func TestUnsetArray(t *testing.T) {
+	tests := []struct {
+		name         string
+		initialLines []string
+		arrayKey     string
+		wantLines    []string
+		wantRemoved  bool
+	}{
+		{
+			name:         "remove from empty",
+			initialLines: []string{},
+			arrayKey:     "repos",
+			wantLines:    nil,
+			wantRemoved:  false,
+		},
+		{
+			name:         "remove all array values",
+			initialLines: []string{"repos[]=/path/to/repo1", "repos[]=/path/to/repo2", "key=value"},
+			arrayKey:     "repos",
+			wantLines:    []string{"key=value"},
+			wantRemoved:  true,
+		},
+		{
+			name:         "array not found",
+			initialLines: []string{"key=value"},
+			arrayKey:     "repos",
+			wantLines:    []string{"key=value"},
+			wantRemoved:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, removed := UnsetArray(tt.initialLines, tt.arrayKey)
+			require.Equal(t, tt.wantLines, got)
+			require.Equal(t, tt.wantRemoved, removed)
+		})
+	}
+}
+
+func TestParseArray(t *testing.T) {
+	tests := []struct {
+		name     string
+		lines    []string
+		arrayKey string
+		want     []string
+	}{
+		{
+			name:     "empty lines",
+			lines:    []string{},
+			arrayKey: "repos",
+			want:     nil,
+		},
+		{
+			name:     "no array values",
+			lines:    []string{"key=value"},
+			arrayKey: "repos",
+			want:     nil,
+		},
+		{
+			name:     "single array value",
+			lines:    []string{"repos[]=/path/to/repo"},
+			arrayKey: "repos",
+			want:     []string{"/path/to/repo"},
+		},
+		{
+			name:     "multiple array values",
+			lines:    []string{"repos[]=/path/to/repo1", "repos[]=/path/to/repo2", "key=value"},
+			arrayKey: "repos",
+			want:     []string{"/path/to/repo1", "/path/to/repo2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseArray(tt.lines, tt.arrayKey)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestProvider(t *testing.T) {
+	tempHome := setupTempHome(t)
+
+	// Write initial config
+	initialLines := []string{"key1=value1", "key2=value2"}
+	err := WriteLines(initialLines)
+	require.NoError(t, err)
+
+	provider := NewProvider()
+	require.NotNil(t, provider)
+
+	// Test Get
+	val, found := provider.Get("key1")
+	require.True(t, found)
+	require.Equal(t, "value1", val)
+
+	// Test GetAll
+	all, err := provider.GetAll()
+	require.NoError(t, err)
+	require.Equal(t, "value1", all["key1"])
+	require.Equal(t, "value2", all["key2"])
+
+	// Test Set
+	err = provider.Set("key3", "value3")
+	require.NoError(t, err)
+
+	val, found = provider.Get("key3")
+	require.True(t, found)
+	require.Equal(t, "value3", val)
+
+	// Test Unset
+	err = provider.Unset("key3")
+	require.NoError(t, err)
+
+	val, found = provider.Get("key3")
+	require.False(t, found)
+	require.Empty(t, val)
+
+	_ = tempHome // use tempHome
+}

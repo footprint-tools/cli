@@ -13,8 +13,13 @@ import (
 )
 
 const (
-	maxEvents       = 100
-	pollIntervalTUI = 300 * time.Millisecond
+	maxEvents = 100
+
+	// Adaptive polling intervals
+	pollFast    = 50 * time.Millisecond  // When there's recent activity
+	pollNormal  = 200 * time.Millisecond // Default polling
+	pollSlow    = 500 * time.Millisecond // When idle for a while
+	idleTimeout = 3 * time.Second        // Time without events before slowing down
 )
 
 // Messages
@@ -38,8 +43,8 @@ type watchModel struct {
 	// Event buffer (circular, newest first for display)
 	events []store.RepoEvent
 
-	// Cached commit messages (commit hash -> subject)
-	commitMessages map[string]string
+	// Cached commit metadata (commit hash -> metadata)
+	commitMeta map[string]git.CommitMetadata
 
 	// Session stats
 	sessionStart time.Time
@@ -47,19 +52,29 @@ type watchModel struct {
 	byType       map[string]int
 	byRepo       map[string]int
 
+	// Adaptive polling
+	lastEventTime time.Time // When we last received new events
+
 	// UI dimensions
 	width  int
 	height int
 
 	// State
-	paused      bool
-	cursor      int
-	eventScroll int
-	filterQuery string
+	paused       bool
+	cursor       int
+	eventScroll  int
+	filterQuery  string
+	filterSource store.Source // -1 means no filter
+	filterRepo   string       // "" means no filter
+
+	// Focus: 0=events, 1=sidebar, 2=drawer
+	focusedPanel  int
+	sidebarScroll int
 
 	// Drawer
 	drawerOpen   bool
 	drawerDetail *EventDetail
+	drawerScroll int
 
 	// Styling
 	colors style.ColorConfig
@@ -67,29 +82,50 @@ type watchModel struct {
 
 func newWatchModel(db *sql.DB, lastID int64) watchModel {
 	return watchModel{
-		db:             db,
-		lastID:         lastID,
-		events:         make([]store.RepoEvent, 0, maxEvents),
-		commitMessages: make(map[string]string),
-		sessionStart:   time.Now(),
-		byType:         make(map[string]int),
-		byRepo:         make(map[string]int),
-		colors:         style.GetColors(),
+		db:           db,
+		lastID:       lastID,
+		events:       make([]store.RepoEvent, 0, maxEvents),
+		commitMeta:   make(map[string]git.CommitMetadata),
+		sessionStart: time.Now(),
+		byType:       make(map[string]int),
+		byRepo:       make(map[string]int),
+		filterSource: -1, // No filter
+		colors:       style.GetColors(),
 	}
 }
 
 // Init implements tea.Model
 func (m watchModel) Init() tea.Cmd {
 	return tea.Batch(
-		tickCmd(),
+		tea.EnableMouseCellMotion,
+		tickCmd(pollFast), // Start fast to catch any immediate events
 	)
 }
 
-// tickCmd returns a command that ticks at the poll interval
-func tickCmd() tea.Cmd {
-	return tea.Tick(pollIntervalTUI, func(t time.Time) tea.Msg {
+// tickCmd returns a command that ticks at the given poll interval
+func tickCmd(interval time.Duration) tea.Cmd {
+	return tea.Tick(interval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
+}
+
+// getPollInterval returns the appropriate polling interval based on recent activity
+func (m watchModel) getPollInterval() time.Duration {
+	if m.lastEventTime.IsZero() {
+		return pollNormal
+	}
+
+	timeSinceEvent := time.Since(m.lastEventTime)
+
+	if timeSinceEvent < 500*time.Millisecond {
+		// Very recent activity - poll fast
+		return pollFast
+	} else if timeSinceEvent < idleTimeout {
+		// Some recent activity - poll normal
+		return pollNormal
+	}
+	// Idle - poll slow
+	return pollSlow
 }
 
 // Update implements tea.Model
@@ -109,19 +145,16 @@ func (m watchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		if m.paused {
-			return m, tickCmd()
+			return m, tickCmd(pollSlow) // Slow poll when paused
 		}
 		return m, tea.Batch(
 			m.pollEvents(),
-			tickCmd(),
+			tickCmd(m.getPollInterval()),
 		)
 
 	case newEventsMsg:
 		m.addEvents([]store.RepoEvent(msg))
-		// Update drawer if open
-		if m.drawerOpen && m.cursor < len(m.events) {
-			m.updateDrawerDetail()
-		}
+		// Don't update drawer - cursor is adjusted in addEvents to keep same event selected
 		return m, nil
 	}
 
@@ -129,40 +162,139 @@ func (m watchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m watchModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// If drawer is open, handle drawer-specific keys
-	if m.drawerOpen {
-		switch msg.Type {
-		case tea.KeyEsc:
-			m.drawerOpen = false
-			m.drawerDetail = nil
-			return m, nil
-		}
-
-		switch msg.String() {
-		case "q":
-			m.drawerOpen = false
-			m.drawerDetail = nil
-			return m, nil
-		case "j", "down":
-			m.moveCursor(1)
-			m.updateDrawerDetail()
-			return m, nil
-		case "k", "up":
-			m.moveCursor(-1)
-			m.updateDrawerDetail()
-			return m, nil
+	// Global keys
+	switch msg.Type {
+	case tea.KeyCtrlC:
+		return m, tea.Quit
+	case tea.KeyTab:
+		// Cycle focus: events -> sidebar -> (drawer if open) -> events
+		if m.drawerOpen {
+			m.focusedPanel = (m.focusedPanel + 1) % 3
+		} else {
+			m.focusedPanel = (m.focusedPanel + 1) % 2
 		}
 		return m, nil
 	}
 
-	// Normal mode keys
-	switch msg.Type {
-	case tea.KeyCtrlC:
-		return m, tea.Quit
+	// Handle based on focused panel
+	if m.drawerOpen && m.focusedPanel == 2 {
+		return m.handleDrawerKeys(msg)
+	}
+	if m.focusedPanel == 1 {
+		return m.handleSidebarKeys(msg)
+	}
+	return m.handleEventsKeys(msg)
+}
 
+func (m watchModel) handleDrawerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.drawerOpen = false
+		m.drawerDetail = nil
+		m.drawerScroll = 0
+		m.focusedPanel = 0
+		return m, nil
+	case tea.KeyUp:
+		m.drawerScroll--
+		if m.drawerScroll < 0 {
+			m.drawerScroll = 0
+		}
+		return m, nil
+	case tea.KeyDown:
+		m.drawerScroll++
+		return m, nil
+	case tea.KeyPgUp:
+		m.drawerScroll -= 10
+		if m.drawerScroll < 0 {
+			m.drawerScroll = 0
+		}
+		return m, nil
+	case tea.KeyPgDown:
+		m.drawerScroll += 10
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "q":
+		m.drawerOpen = false
+		m.drawerDetail = nil
+		m.drawerScroll = 0
+		m.focusedPanel = 0
+		return m, nil
+	case "j":
+		m.drawerScroll++
+		return m, nil
+	case "k":
+		m.drawerScroll--
+		if m.drawerScroll < 0 {
+			m.drawerScroll = 0
+		}
+		return m, nil
+	case "g":
+		m.drawerScroll = 0
+		return m, nil
+	case "G":
+		m.drawerScroll = 999
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m watchModel) handleSidebarKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc:
+		// Clear filters or switch focus
+		if m.filterSource != -1 || m.filterRepo != "" {
+			m.filterSource = -1
+			m.filterRepo = ""
+			return m, nil
+		}
+		m.focusedPanel = 0
+		return m, nil
+	case tea.KeyUp:
+		m.sidebarScroll--
+		if m.sidebarScroll < 0 {
+			m.sidebarScroll = 0
+		}
+		return m, nil
+	case tea.KeyDown:
+		m.sidebarScroll++
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "q":
+		return m, tea.Quit
+	case "j":
+		m.sidebarScroll++
+		return m, nil
+	case "k":
+		m.sidebarScroll--
+		if m.sidebarScroll < 0 {
+			m.sidebarScroll = 0
+		}
+		return m, nil
+	case "c":
+		m.filterSource = -1
+		m.filterRepo = ""
+		return m, nil
+	case "1", "2", "3", "4", "5", "6", "7":
+		return m.toggleSourceFilter(msg.String())
+	}
+	return m, nil
+}
+
+func (m watchModel) handleEventsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
 	case tea.KeyEsc:
 		if m.filterQuery != "" {
 			m.filterQuery = ""
+			return m, nil
+		}
+		if m.drawerOpen {
+			m.drawerOpen = false
+			m.drawerDetail = nil
+			m.drawerScroll = 0
 			return m, nil
 		}
 		return m, tea.Quit
@@ -170,6 +302,7 @@ func (m watchModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		if len(m.events) > 0 && m.cursor < len(m.events) {
 			m.drawerOpen = true
+			m.focusedPanel = 2
 			m.updateDrawerDetail()
 		}
 		return m, nil
@@ -192,6 +325,28 @@ func (m watchModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleRunes(msg)
 	}
 
+	return m, nil
+}
+
+func (m watchModel) toggleSourceFilter(key string) (tea.Model, tea.Cmd) {
+	sourceMap := map[string]store.Source{
+		"1": store.SourcePostCommit,
+		"2": store.SourcePostRewrite,
+		"3": store.SourcePostCheckout,
+		"4": store.SourcePostMerge,
+		"5": store.SourcePrePush,
+		"6": store.SourceManual,
+		"7": store.SourceBackfill,
+	}
+	if source, ok := sourceMap[key]; ok {
+		if m.filterSource == source {
+			m.filterSource = -1
+		} else {
+			m.filterSource = source
+		}
+		m.cursor = 0
+		m.eventScroll = 0
+	}
 	return m, nil
 }
 
@@ -220,14 +375,18 @@ func (m watchModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "c":
-		// Clear filter
+		// Clear all filters
 		m.filterQuery = ""
+		m.filterSource = -1
+		m.filterRepo = ""
 		return m, nil
+	case "1", "2", "3", "4", "5", "6", "7":
+		return m.toggleSourceFilter(key)
 	case "/":
-		// Start filter mode - just append to filter
+		// Start filter mode
 		return m, nil
 	default:
-		// Any other character goes to filter
+		// Any other character goes to text filter
 		if len(key) == 1 && key[0] >= 32 && key[0] < 127 {
 			m.filterQuery += key
 			m.cursor = 0
@@ -240,25 +399,22 @@ func (m watchModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Calculate regions
-	statsWidth, eventsWidth, drawerWidth := m.calculateWidths()
+	statsWidth, eventsWidth, _ := m.calculateWidths()
+	drawerStart := statsWidth + eventsWidth
 
 	switch msg.Button {
 	case tea.MouseButtonLeft:
 		if msg.Action != tea.MouseActionPress {
 			return m, nil
 		}
-		// If drawer is open and click is outside drawer, close it
-		if m.drawerOpen {
-			drawerStart := statsWidth + eventsWidth
-			if msg.X < drawerStart {
-				m.drawerOpen = false
-				m.drawerDetail = nil
-				return m, nil
-			}
-		}
 
-		// Click in events area - select event
-		if msg.X >= statsWidth && msg.X < statsWidth+eventsWidth {
+		// Determine which panel was clicked and set focus
+		if msg.X < statsWidth {
+			// Click in sidebar
+			m.focusedPanel = 1
+		} else if msg.X < drawerStart {
+			// Click in events area
+			m.focusedPanel = 0
 			headerHeight := 3
 			footerHeight := 2
 			if msg.Y >= headerHeight && msg.Y < m.height-footerHeight {
@@ -269,21 +425,41 @@ func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 					m.cursor = clickedIdx
 				}
 			}
+		} else if m.drawerOpen {
+			// Click in drawer
+			m.focusedPanel = 2
 		}
 
 	case tea.MouseButtonWheelUp:
-		if msg.X >= statsWidth && msg.X < statsWidth+eventsWidth+drawerWidth {
+		// Scroll based on mouse position
+		if msg.X < statsWidth {
+			m.sidebarScroll--
+			if m.sidebarScroll < 0 {
+				m.sidebarScroll = 0
+			}
+		} else if msg.X < drawerStart {
 			m.moveCursor(-1)
+		} else if m.drawerOpen {
+			m.drawerScroll--
+			if m.drawerScroll < 0 {
+				m.drawerScroll = 0
+			}
 		}
 
 	case tea.MouseButtonWheelDown:
-		if msg.X >= statsWidth && msg.X < statsWidth+eventsWidth+drawerWidth {
+		// Scroll based on mouse position
+		if msg.X < statsWidth {
+			m.sidebarScroll++
+		} else if msg.X < drawerStart {
 			m.moveCursor(1)
+		} else if m.drawerOpen {
+			m.drawerScroll++
 		}
 	}
 
 	return m, nil
 }
+
 
 func (m *watchModel) moveCursor(delta int) {
 	filtered := m.filteredEvents()
@@ -300,6 +476,7 @@ func (m *watchModel) moveCursor(delta int) {
 	}
 }
 
+
 func (m watchModel) pollEvents() tea.Cmd {
 	return func() tea.Msg {
 		events, err := store.ListEventsSince(m.db, m.lastID)
@@ -311,6 +488,16 @@ func (m watchModel) pollEvents() tea.Cmd {
 }
 
 func (m *watchModel) addEvents(events []store.RepoEvent) {
+	if len(events) == 0 {
+		return
+	}
+
+	// Mark that we received events (for adaptive polling)
+	m.lastEventTime = time.Now()
+
+	// Count how many events we'll actually add (to adjust cursor)
+	eventsAdded := 0
+
 	for _, e := range events {
 		// Update lastID
 		if e.ID > m.lastID {
@@ -323,10 +510,10 @@ func (m *watchModel) addEvents(events []store.RepoEvent) {
 		repoName := filepath.Base(e.RepoPath)
 		m.byRepo[repoName]++
 
-		// Fetch and cache commit message
-		if _, exists := m.commitMessages[e.Commit]; !exists {
+		// Fetch and cache commit metadata
+		if _, exists := m.commitMeta[e.Commit]; !exists {
 			meta := git.GetCommitMetadata(e.RepoPath, e.Commit)
-			m.commitMessages[e.Commit] = meta.Subject
+			m.commitMeta[e.Commit] = meta
 		}
 
 		// Add to buffer (prepend for newest-first)
@@ -336,7 +523,20 @@ func (m *watchModel) addEvents(events []store.RepoEvent) {
 		}
 		copy(m.events[1:], m.events)
 		m.events[0] = e
+		eventsAdded++
 	}
+
+	// When drawer is open, adjust cursor to keep the same event selected
+	// When drawer is closed, cursor stays at 0 (newest event)
+	if eventsAdded > 0 && m.drawerOpen && len(m.events) > eventsAdded {
+		m.cursor += eventsAdded
+		// Clamp to valid range
+		filtered := m.filteredEvents()
+		if m.cursor >= len(filtered) {
+			m.cursor = len(filtered) - 1
+		}
+	}
+	// eventScroll stays at 0 to show newest events at top
 }
 
 func (m *watchModel) updateDrawerDetail() {
@@ -347,7 +547,7 @@ func (m *watchModel) updateDrawerDetail() {
 	}
 
 	event := filtered[m.cursor]
-	meta := git.GetCommitMetadata(event.RepoPath, event.Commit)
+	meta := m.getCommitMeta(event.RepoPath, event.Commit)
 	m.drawerDetail = &EventDetail{
 		Event: event,
 		Meta:  meta,
@@ -355,7 +555,8 @@ func (m *watchModel) updateDrawerDetail() {
 }
 
 func (m watchModel) filteredEvents() []store.RepoEvent {
-	if m.filterQuery == "" {
+	// No filters active
+	if m.filterQuery == "" && m.filterSource == -1 {
 		return m.events
 	}
 
@@ -363,17 +564,27 @@ func (m watchModel) filteredEvents() []store.RepoEvent {
 	var filtered []store.RepoEvent
 
 	for _, e := range m.events {
-		repoName := strings.ToLower(filepath.Base(e.RepoPath))
-		branch := strings.ToLower(e.Branch)
-		commit := strings.ToLower(e.Commit)
-		message := strings.ToLower(m.getCommitMessage(e.Commit))
-
-		if strings.Contains(repoName, query) ||
-			strings.Contains(branch, query) ||
-			strings.Contains(commit, query) ||
-			strings.Contains(message, query) {
-			filtered = append(filtered, e)
+		// Filter by source type
+		if m.filterSource != -1 && e.Source != m.filterSource {
+			continue
 		}
+
+		// Filter by text query
+		if query != "" {
+			repoName := strings.ToLower(filepath.Base(e.RepoPath))
+			branch := strings.ToLower(e.Branch)
+			commit := strings.ToLower(e.Commit)
+			message := strings.ToLower(m.getCommitMessage(e.Commit))
+
+			if !strings.Contains(repoName, query) &&
+				!strings.Contains(branch, query) &&
+				!strings.Contains(commit, query) &&
+				!strings.Contains(message, query) {
+				continue
+			}
+		}
+
+		filtered = append(filtered, e)
 	}
 
 	return filtered
@@ -384,31 +595,21 @@ func (m watchModel) calculateWidths() (stats, events, drawer int) {
 		return 25, 75, 0
 	}
 
+	// Match splitpanel.Config values from View()
+	stats = int(float64(m.width) * 0.20)
+	if stats < 18 {
+		stats = 18
+	}
+	if stats > 26 {
+		stats = 26
+	}
+
 	if m.drawerOpen {
-		// 20% stats, 35% events, 45% drawer
-		stats = m.width * 20 / 100
-		if stats < 20 {
-			stats = 20
-		}
-		drawer = m.width * 45 / 100
-		if drawer < 30 {
-			drawer = 30
-		}
-		events = m.width - stats - drawer - 2 // borders
-		if events < 20 {
-			events = 20
-		}
+		drawer = int(float64(m.width) * 0.35)
+		events = m.width - stats - drawer
 	} else {
-		// 25% stats, 75% events
-		stats = m.width * 25 / 100
-		if stats < 20 {
-			stats = 20
-		}
-		if stats > 30 {
-			stats = 30
-		}
-		events = m.width - stats - 1 // border
 		drawer = 0
+		events = m.width - stats
 	}
 	return
 }
@@ -418,8 +619,18 @@ func (m watchModel) sessionDuration() time.Duration {
 }
 
 func (m watchModel) getCommitMessage(commit string) string {
-	if msg, exists := m.commitMessages[commit]; exists {
-		return msg
+	if meta, exists := m.commitMeta[commit]; exists {
+		return meta.Subject
 	}
 	return ""
 }
+
+func (m watchModel) getCommitMeta(repoPath, commit string) git.CommitMetadata {
+	if meta, exists := m.commitMeta[commit]; exists {
+		return meta
+	}
+	// Fetch if not cached (shouldn't happen normally)
+	meta := git.GetCommitMetadata(repoPath, commit)
+	return meta
+}
+

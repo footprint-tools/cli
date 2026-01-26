@@ -125,6 +125,49 @@ func TestParsedFlags_String(t *testing.T) {
 			defaultVal: "",
 			want:       "first",
 		},
+		// Space-separated format: --flag value
+		{
+			name:       "space separated format",
+			flags:      []string{"--name", "value"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "value",
+		},
+		{
+			name:       "space separated with other flags",
+			flags:      []string{"--verbose", "--name", "value", "--debug"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "value",
+		},
+		{
+			name:       "space separated next value is flag returns default",
+			flags:      []string{"--name", "--other"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "default",
+		},
+		{
+			name:       "space separated flag at end returns default",
+			flags:      []string{"--verbose", "--name"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "default",
+		},
+		{
+			name:       "equals format takes precedence over space",
+			flags:      []string{"--name=equals", "--name", "space"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "equals",
+		},
+		{
+			name:       "space separated with short flag as next",
+			flags:      []string{"--name", "-v"},
+			flagName:   "--name",
+			defaultVal: "default",
+			want:       "default",
+		},
 	}
 
 	for _, tt := range tests {

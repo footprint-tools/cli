@@ -1,150 +1,97 @@
 package tracking
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/repo"
+	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/footprint-cli/internal/store/migrations"
 )
 
-func TestRepos_EmptyList(t *testing.T) {
-	var capturedOutput []string
+func newTestStore(t *testing.T) *store.Store {
+	t.Helper()
+	db, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
 
-	deps := Deps{
-		ListTracked: func() ([]repo.RepoID, error) {
-			return []repo.RepoID{}, nil
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	err = migrations.Run(db)
+	require.NoError(t, err)
+
+	return store.NewWithDB(db)
+}
+
+func TestReposList_Empty(t *testing.T) {
+	s := newTestStore(t)
+	var printedLines []string
+
+	deps := reposDeps{
+		DBPath: func() string { return ":memory:" },
+		OpenStore: func(_ string) (*store.Store, error) {
+			return s, nil
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				// Can be either string or repo.RepoID
-				switch v := a[0].(type) {
-				case string:
-					capturedOutput = append(capturedOutput, v)
-				case repo.RepoID:
-					capturedOutput = append(capturedOutput, string(v))
-				}
+				printedLines = append(printedLines, a[0].(string))
 			}
 			return 0, nil
 		},
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := repos([]string{}, flags, deps)
-
+	err := reposList(deps)
 	require.NoError(t, err)
-	require.Len(t, capturedOutput, 1)
-	require.Equal(t, "no tracked repositories", capturedOutput[0])
+	require.Len(t, printedLines, 2)
+	require.Contains(t, printedLines[0], "no tracked repositories")
+	require.Contains(t, printedLines[1], "fp setup")
 }
 
-func TestRepos_SingleRepo(t *testing.T) {
-	var capturedOutput []string
+func TestReposList_WithRepos(t *testing.T) {
+	s := newTestStore(t)
 
-	deps := Deps{
-		ListTracked: func() ([]repo.RepoID, error) {
-			return []repo.RepoID{"github.com/user/repo"}, nil
+	// Add some repos
+	require.NoError(t, s.AddRepo("/path/to/repo1"))
+	require.NoError(t, s.AddRepo("/path/to/repo2"))
+
+	var printedLines []string
+
+	deps := reposDeps{
+		DBPath: func() string { return ":memory:" },
+		OpenStore: func(_ string) (*store.Store, error) {
+			return s, nil
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				// Can be either string or repo.RepoID
-				switch v := a[0].(type) {
-				case string:
-					capturedOutput = append(capturedOutput, v)
-				case repo.RepoID:
-					capturedOutput = append(capturedOutput, string(v))
-				}
+				printedLines = append(printedLines, a[0].(string))
 			}
 			return 0, nil
 		},
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := repos([]string{}, flags, deps)
-
+	err := reposList(deps)
 	require.NoError(t, err)
-	require.Len(t, capturedOutput, 1)
-	require.Equal(t, "github.com/user/repo", capturedOutput[0])
+	require.Len(t, printedLines, 2)
+	require.Equal(t, "/path/to/repo1", printedLines[0])
+	require.Equal(t, "/path/to/repo2", printedLines[1])
 }
 
-func TestRepos_MultipleReposSorted(t *testing.T) {
-	var capturedOutput []string
-
-	deps := Deps{
-		ListTracked: func() ([]repo.RepoID, error) {
-			// Return unsorted list
-			return []repo.RepoID{
-				"github.com/zebra/repo",
-				"github.com/alpha/repo",
-				"github.com/beta/repo",
-			}, nil
+func TestReposList_OpenStoreError(t *testing.T) {
+	deps := reposDeps{
+		DBPath: func() string { return "/invalid/path" },
+		OpenStore: func(_ string) (*store.Store, error) {
+			return nil, errors.New("failed to open store")
 		},
 		Println: func(a ...any) (int, error) {
-			if len(a) > 0 {
-				// Can be either string or repo.RepoID
-				switch v := a[0].(type) {
-				case string:
-					capturedOutput = append(capturedOutput, v)
-				case repo.RepoID:
-					capturedOutput = append(capturedOutput, string(v))
-				}
-			}
 			return 0, nil
 		},
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := repos([]string{}, flags, deps)
-
-	require.NoError(t, err)
-	require.Len(t, capturedOutput, 3)
-	// Should be sorted alphabetically
-	require.Equal(t, "github.com/alpha/repo", capturedOutput[0])
-	require.Equal(t, "github.com/beta/repo", capturedOutput[1])
-	require.Equal(t, "github.com/zebra/repo", capturedOutput[2])
-}
-
-func TestRepos_ListTrackedError(t *testing.T) {
-	deps := Deps{
-		ListTracked: func() ([]repo.RepoID, error) {
-			return nil, errors.New("failed to list tracked repos")
-		},
-	}
-
-	flags := dispatchers.NewParsedFlags([]string{})
-	err := repos([]string{}, flags, deps)
-
+	err := reposList(deps)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to list tracked repos")
-}
-
-func TestRepos_IgnoresArgsAndFlags(t *testing.T) {
-	var capturedOutput []string
-
-	deps := Deps{
-		ListTracked: func() ([]repo.RepoID, error) {
-			return []repo.RepoID{"github.com/user/repo"}, nil
-		},
-		Println: func(a ...any) (int, error) {
-			if len(a) > 0 {
-				// Can be either string or repo.RepoID
-				switch v := a[0].(type) {
-				case string:
-					capturedOutput = append(capturedOutput, v)
-				case repo.RepoID:
-					capturedOutput = append(capturedOutput, string(v))
-				}
-			}
-			return 0, nil
-		},
-	}
-
-	// Should ignore args and flags
-	flags := dispatchers.NewParsedFlags([]string{"--some-flag"})
-	err := repos([]string{"arg1", "arg2"}, flags, deps)
-
-	require.NoError(t, err)
-	require.Len(t, capturedOutput, 1)
-	require.Equal(t, "github.com/user/repo", capturedOutput[0])
+	require.Contains(t, err.Error(), "failed to open store")
 }

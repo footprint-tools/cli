@@ -20,6 +20,7 @@ type LogLine struct {
 	Raw       string
 	Timestamp string
 	Level     string // ERROR, WARN, INFO, DEBUG
+	Caller    string // file:line
 	Message   string
 }
 
@@ -57,8 +58,11 @@ type logsModel struct {
 	lines []LogLine
 
 	// Stats
-	sessionStart time.Time
-	byLevel      map[string]int
+	sessionStart  time.Time
+	totalEver     int            // Total lines in file (all time)
+	sessionLines  int            // Lines received during this session
+	byLevel       map[string]int // Counts by log level (session only)
+	byLevelTotal  map[string]int // Counts by log level (all time)
 
 	// UI dimensions
 	width  int
@@ -86,6 +90,7 @@ func newLogsModel(logPath string) logsModel {
 		lines:        make([]LogLine, 0, maxLogLines),
 		sessionStart: time.Now(),
 		byLevel:      make(map[string]int),
+		byLevelTotal: make(map[string]int),
 		autoScroll:   true,
 		colors:       style.GetColors(),
 	}
@@ -131,7 +136,7 @@ func (m logsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case newLinesMsg:
-		m.addLines([]LogLine(msg))
+		m.addSessionLines([]LogLine(msg))
 		if m.autoScroll && len(m.filteredLines()) > 0 {
 			m.cursor = len(m.filteredLines()) - 1
 		}
@@ -143,7 +148,7 @@ func (m logsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case initialLoadMsg:
-		m.addLines(msg.lines)
+		m.addInitialLines(msg.lines)
 		m.lastSize = msg.size
 		m.lastModTime = msg.modTime
 		if m.autoScroll && len(m.filteredLines()) > 0 {
@@ -152,7 +157,7 @@ func (m logsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case newDataMsg:
-		m.addLines(msg.lines)
+		m.addSessionLines(msg.lines)
 		m.lastSize = msg.size
 		m.lastModTime = msg.modTime
 		if m.autoScroll && len(m.filteredLines()) > 0 {
@@ -404,7 +409,7 @@ func (m logsModel) loadInitialLines() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var lines []LogLine
 		scanner := bufio.NewScanner(file)
@@ -445,7 +450,7 @@ func (m logsModel) checkForNewLines() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		// Seek to last known position
 		if m.lastSize > 0 {
@@ -474,10 +479,33 @@ func (m logsModel) checkForNewLines() tea.Cmd {
 	}
 }
 
-func (m *logsModel) addLines(lines []LogLine) {
+// addInitialLines adds lines from the initial file load (not counted as session)
+func (m *logsModel) addInitialLines(lines []LogLine) {
 	for _, line := range lines {
-		// Update stats
+		// Update total stats only
+		m.totalEver++
 		if line.Level != "" {
+			m.byLevelTotal[line.Level]++
+		}
+
+		// Add to buffer
+		m.lines = append(m.lines, line)
+
+		// Trim if too many
+		if len(m.lines) > maxLogLines {
+			m.lines = m.lines[1:]
+		}
+	}
+}
+
+// addSessionLines adds lines that arrived during this session
+func (m *logsModel) addSessionLines(lines []LogLine) {
+	for _, line := range lines {
+		// Update both total and session stats
+		m.totalEver++
+		m.sessionLines++
+		if line.Level != "" {
+			m.byLevelTotal[line.Level]++
 			m.byLevel[line.Level]++
 		}
 
@@ -560,19 +588,38 @@ func (m logsModel) sessionDuration() time.Duration {
 func parseLine(raw string) LogLine {
 	line := LogLine{Raw: raw}
 
-	// Try to parse timestamp and level
-	// Format: [2024-01-15 10:30:45] LEVEL: message
+	// Try to parse timestamp, level, caller, and message
+	// New format: [2024-01-15 10:30:45] LEVEL file:line: message
+	// Old format: [2024-01-15 10:30:45] LEVEL: message
 	if len(raw) > 22 && raw[0] == '[' {
 		closeBracket := strings.Index(raw, "]")
 		if closeBracket > 0 {
 			line.Timestamp = raw[1:closeBracket]
 			rest := strings.TrimSpace(raw[closeBracket+1:])
 
-			// Check for level
-			for _, level := range []string{"ERROR:", "WARN:", "INFO:", "DEBUG:"} {
-				if strings.HasPrefix(rest, level) {
-					line.Level = strings.TrimSuffix(level, ":")
-					line.Message = strings.TrimSpace(rest[len(level):])
+			// Check for level (with or without caller)
+			for _, level := range []string{"ERROR", "WARN", "INFO", "DEBUG"} {
+				if strings.HasPrefix(rest, level+" ") || strings.HasPrefix(rest, level+":") {
+					line.Level = level
+
+					// Skip level
+					afterLevel := strings.TrimSpace(rest[len(level):])
+
+					// Check if next part is caller (file.go:123:) or old format (:)
+					if len(afterLevel) > 0 && afterLevel[0] == ':' {
+						// Old format: LEVEL: message
+						line.Message = strings.TrimSpace(afterLevel[1:])
+					} else {
+						// New format: LEVEL file:line: message
+						// Find the colon after file:line
+						colonIdx := strings.Index(afterLevel, ":")
+						if colonIdx > 0 {
+							line.Caller = strings.TrimSpace(afterLevel[:colonIdx])
+							line.Message = strings.TrimSpace(afterLevel[colonIdx+1:])
+						} else {
+							line.Message = afterLevel
+						}
+					}
 					return line
 				}
 			}

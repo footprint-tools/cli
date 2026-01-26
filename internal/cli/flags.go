@@ -104,34 +104,36 @@ var (
 
 	SetupFlags = []dispatchers.FlagDescriptor{
 		{
-			Names:       []string{"--repo"},
-			Description: "Install hooks in current repository only (instead of global)",
-			Scope:       dispatchers.FlagScopeLocal,
-		},
-		{
 			Names:       []string{"--force"},
-			Description: "Skip confirmation prompt",
+			Description: "Overwrite existing hooks without prompting",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
 
 	TeardownFlags = []dispatchers.FlagDescriptor{
 		{
-			Names:       []string{"--repo"},
-			Description: "Remove hooks from current repository only (instead of global)",
-			Scope:       dispatchers.FlagScopeLocal,
-		},
-		{
 			Names:       []string{"--force"},
-			Description: "Skip confirmation prompt",
+			Description: "Remove hooks without prompting",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
 
-	CheckFlags = []dispatchers.FlagDescriptor{
+	ReposFlags = []dispatchers.FlagDescriptor{
 		{
-			Names:       []string{"--repo"},
-			Description: "Check hooks in current repository (instead of global)",
+			Names:       []string{"-i", "--interactive"},
+			Description: "Interactive mode to manage hooks across repositories",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--root"},
+			ValueHint:   "<path>",
+			Description: "Root directory to scan (default: current directory)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--depth"},
+			ValueHint:   "<n>",
+			Description: "Maximum depth to scan (default: 25)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
@@ -186,24 +188,6 @@ var (
 		{
 			Names:       []string{"--open"},
 			Description: "Open the export directory in file manager",
-			Scope:       dispatchers.FlagScopeLocal,
-		},
-	}
-
-	TrackFlags = []dispatchers.FlagDescriptor{
-		{
-			Names:       []string{"--remote"},
-			ValueHint:   "<name>",
-			Description: "Use specified remote instead of 'origin'",
-			Scope:       dispatchers.FlagScopeLocal,
-		},
-	}
-
-	UntrackFlags = []dispatchers.FlagDescriptor{
-		{
-			Names:       []string{"--id"},
-			ValueHint:   "<repo-id>",
-			Description: "Untrack by repository ID instead of path (useful for orphaned repos)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
