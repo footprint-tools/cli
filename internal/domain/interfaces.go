@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"io"
 )
 
@@ -35,22 +34,10 @@ type GitProvider interface {
 	CommitAuthor() (string, error)
 }
 
-// RepoTracker defines operations for tracking repositories.
-type RepoTracker interface {
+// RepoIDDeriver defines operations for deriving repository IDs.
+type RepoIDDeriver interface {
 	// DeriveID derives a repository ID from a remote URL or local path.
 	DeriveID(remoteURL, localPath string) (RepoID, error)
-
-	// Track starts tracking a repository.
-	Track(id RepoID) (added bool, err error)
-
-	// Untrack stops tracking a repository.
-	Untrack(id RepoID) (removed bool, err error)
-
-	// IsTracked checks if a repository is being tracked.
-	IsTracked(id RepoID) (bool, error)
-
-	// ListTracked returns all tracked repository IDs.
-	ListTracked() ([]RepoID, error)
 }
 
 // EventStore defines operations for storing and retrieving events.
@@ -182,7 +169,7 @@ type HooksStatus struct {
 // Application represents the main application context with all dependencies.
 type Application struct {
 	Git     GitProvider
-	Repo    RepoTracker
+	Repo    RepoIDDeriver
 	Store   EventStore
 	Config  ConfigProvider
 	Logger  Logger
@@ -190,6 +177,3 @@ type Application struct {
 	Styler  Styler
 	Hooks   HooksManager
 }
-
-// CommandFunc is the signature for command handlers.
-type CommandFunc func(ctx context.Context, app *Application, args []string, flags map[string]string) error

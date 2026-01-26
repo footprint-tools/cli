@@ -78,7 +78,7 @@ func New(opts Options) (*domain.Application, error) {
 
 	return &domain.Application{
 		Git:    git.NewProvider(),
-		Repo:   repo.NewTracker(),
+		Repo:   repo.NewDeriver(),
 		Store:  eventStore,
 		Config: config.NewProvider(),
 		Logger: logger,
@@ -93,7 +93,7 @@ func New(opts Options) (*domain.Application, error) {
 func NewForTesting() *domain.Application {
 	return &domain.Application{
 		Git:    git.NewProvider(),
-		Repo:   repo.NewTracker(),
+		Repo:   repo.NewDeriver(),
 		Store:  store.NewWithDB(nil), // nil DB for testing - callers should provide their own
 		Config: config.NewProvider(),
 		Logger: log.NopLogger{},

@@ -26,11 +26,7 @@ type Deps struct {
 	CommitAuthor   func() (string, error)
 
 	// repo
-	DeriveID    func(string, string) (repodomain.RepoID, error)
-	Track       func(repodomain.RepoID) (bool, error)
-	Untrack     func(repodomain.RepoID) (bool, error)
-	IsTracked   func(repodomain.RepoID) (bool, error)
-	ListTracked func() ([]repodomain.RepoID, error)
+	DeriveID func(string, string) (repodomain.RepoID, error)
 
 	// store
 	DBPath       func() string
@@ -68,11 +64,7 @@ func DefaultDeps() Deps {
 		CommitMessage:  git.CommitMessage,
 		CommitAuthor:   git.CommitAuthor,
 
-		DeriveID:    repodomain.DeriveID,
-		Track:       repodomain.Track,
-		Untrack:     repodomain.Untrack,
-		IsTracked:   repodomain.IsTracked,
-		ListTracked: repodomain.ListTracked,
+		DeriveID: repodomain.DeriveID,
 
 		DBPath:       store.DBPath,
 		OpenDB:       store.Open, //nolint:staticcheck // TODO: refactor to use store.New() with *Store interface
