@@ -1,4 +1,4 @@
-module github.com/footprint-tools/footprint-cli
+module github.com/footprint-tools/cli
 
 go 1.24.0
 
