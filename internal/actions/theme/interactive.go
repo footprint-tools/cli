@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/ui/splitpanel"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/ui/splitpanel"
+	"github.com/footprint-tools/cli/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
@@ -18,15 +18,16 @@ import (
 // Public API
 //
 
-func Pick(args []string, flags *dispatchers.ParsedFlags) error {
-	return pick(args, flags, DefaultDeps())
+// Interactive launches the theme picker TUI.
+func Interactive(args []string, flags *dispatchers.ParsedFlags) error {
+	return interactive(args, flags, DefaultDeps())
 }
 
 //
 // Entrypoint
 //
 
-func pick(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
+func interactive(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 	// Hard guard: Bubble Tea REQUIRES a real terminal
 	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 		return errors.New("theme picker requires an interactive terminal")
