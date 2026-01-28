@@ -40,3 +40,8 @@ CLAUDE.md
 # Local documentation (dev only)
 # ──────────────────────────────
 docs/
+
+# ──────────────────────────────
+# Development binaries
+# ──────────────────────────────
+fpdev
