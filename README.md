@@ -27,7 +27,7 @@ fp activity               # View recorded events
 fp setup                     # Install hooks in current repo
 fp setup ~/projects/myapp    # Install in specific repo
 fp setup --core-hooks-path   # Set global hooks (git core.hooksPath)
-fp check                     # Verify hooks are installed
+fp repos check               # Verify hooks are installed
 ```
 
 ### View Activity
@@ -45,10 +45,10 @@ fp watch -i                  # Interactive dashboard
 ### Manage Repositories
 
 ```bash
-fp repos                     # List repos with activity
-fp repos list                # Same as above
+fp repos list                # List repos with activity
 fp repos scan                # Find repos and show hook status
 fp repos scan --root ~/dev   # Scan from specific path
+fp repos check               # Verify hooks in current repo
 fp repos -i                  # Interactive hook manager
 
 fp teardown                  # Remove hooks from current repo
@@ -81,6 +81,7 @@ fp config list               # Show all settings
 fp config get <key>          # Get a value
 fp config set <key> <value>  # Set a value
 fp config unset <key>        # Remove a value
+fp config -i                 # Interactive settings editor
 ```
 
 Settings:
@@ -98,7 +99,7 @@ Settings:
 ```bash
 fp theme list                # Show available themes
 fp theme set neon-dark       # Apply a theme
-fp theme pick                # Interactive theme picker
+fp theme -i                  # Interactive theme picker
 ```
 
 Themes: default, neon, aurora, mono, ocean, sunset, candy, contrast (each with -dark/-light variants)

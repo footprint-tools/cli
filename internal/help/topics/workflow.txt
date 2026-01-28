@@ -14,6 +14,9 @@ GETTING STARTED
     That's it! Every commit, merge, checkout, and rebase in this repo
     will now be recorded automatically.
 
+    Setup also installs shell completions for tab-completion of fp
+    commands. See 'fp help configuration' for manual setup.
+
     Repeat for each repository you want to track.
 
 DAILY USAGE
@@ -23,7 +26,7 @@ After setup, fp works silently. Check your activity anytime:
     $ fp activity           # See recent activity across all repos
     $ fp activity -n 50     # See more entries
     $ fp repos              # List all tracked repositories
-    $ fp check              # Verify hooks are installed in current repo
+    $ fp repos check        # Verify hooks are installed in current repo
 
 REAL-TIME MONITORING
 
@@ -31,6 +34,15 @@ Watch events as they happen:
 
     $ fp watch              # Stream events live (Ctrl+C to stop)
     $ fp watch -i           # Interactive view with stats
+
+STAYING UP TO DATE
+
+Check your version and update when needed:
+
+    $ fp version             # Show installed version
+    $ fp update              # Download and install latest release
+
+Updates automatically reinstall shell completions.
 
 MENTAL MODEL
 

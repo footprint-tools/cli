@@ -65,7 +65,7 @@ When you make a commit (or merge, checkout, etc.):
 
 CHECKING HOOK STATUS
 
-    $ fp check              # Current repo
+    $ fp repos check        # Current repo
     $ fp repos scan         # Scan multiple repos
 
 REMOVING HOOKS

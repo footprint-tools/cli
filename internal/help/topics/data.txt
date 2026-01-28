@@ -44,8 +44,8 @@ Export location:
 CSV files rotate by year:
 
     commits.csv          This year's events
-    commits-2024.csv     Last year's events
-    commits-2023.csv     Older events
+    commits-2025.csv     Last year's events
+    commits-2024.csv     Older events
 
 CSV COLUMNS
 

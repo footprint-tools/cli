@@ -7,7 +7,7 @@ HOOKS NOT RUNNING
 If fp doesn't record events after commits:
 
     1. Check if hooks are installed:
-       $ fp check
+       $ fp repos check
 
     2. Re-install hooks if needed:
        $ fp setup
@@ -19,7 +19,7 @@ NO EVENTS SHOWING UP
 If 'fp activity' shows nothing:
 
     1. Verify hooks are installed:
-       $ fp check
+       $ fp repos check
 
     2. Make a test commit and check again:
        $ git commit --allow-empty -m "test"
@@ -33,7 +33,7 @@ MISSING HISTORICAL EVENTS
 To import commits made before fp was installed:
 
     $ fp backfill                    # Import all past commits
-    $ fp backfill --since 2024-01-01 # Import from specific date
+    $ fp backfill --since 2025-01-01 # Import from specific date
     $ fp backfill --limit 100        # Import last 100 commits
 
 Note: backfill only imports commits, not merges or checkouts.
@@ -65,5 +65,32 @@ HOOKS CONFLICT WITH EXISTING HOOKS
 If you already have git hooks:
 
     1. fp backs them up automatically during setup
-    2. Check backup status with: fp check
+    2. Check backup status with: fp repos check
     3. Backups are saved as .git/hooks/*.backup
+
+COMPLETIONS NOT WORKING
+
+If tab-completion stops working after an update:
+
+    1. Reinstall completions:
+       $ fp completions
+
+    2. Restart your shell:
+       $ exec $SHELL
+
+If you use Zsh and completions never worked:
+
+    1. Add eval line to ~/.zshrc:
+       $ echo 'eval "$(fp completions --script)"' >> ~/.zshrc
+
+    2. Restart your shell
+
+STILL HAVING ISSUES
+
+Before reporting a bug, try updating to the latest version:
+
+    $ fp version             # Note your current version
+    $ fp update              # Install latest release
+
+If the issue persists, include the output of 'fp version' when
+reporting at: https://github.com/footprint-tools/cli/issues

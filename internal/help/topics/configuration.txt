@@ -36,6 +36,11 @@ APPEARANCE
                            Options: 12h, 24h
                            Example: fp config set display_time 12h
 
+    pager                  Command used to page output
+                           Default: less -FRSX
+                           Example: fp config set pager "less -R"
+                           Use 'cat' to disable paging
+
 LOGGING
 
     enable_log             Turn logging on/off (true/false)
@@ -103,6 +108,31 @@ Common ANSI 256 colors:
     Black:   232, 16
 
 Full 256-color chart: https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
+
+SHELL COMPLETIONS
+
+Tab-completion for fp commands. Installed automatically by 'fp setup'
+and 'fp update'.
+
+To reinstall or install manually:
+
+    $ fp completions          # Auto-detect shell, interactive install
+    $ fp completions bash     # Specify shell explicitly
+
+For eval-based setup (Zsh users or custom configs):
+
+    $ fp completions --script # Print script to stdout
+
+    Add to your shell rc file:
+        eval "$(fp completions --script)"    # Bash/Zsh
+        fp completions --script | source     # Fish
+
+Supported shells: bash, zsh, fish
+
+Install locations:
+    Fish: ~/.config/fish/completions/fp.fish
+    Bash: ~/.local/share/bash-completion/completions/fp
+    Zsh:  eval in ~/.zshrc (no file written)
 
 CONFIG FILE LOCATION
 
