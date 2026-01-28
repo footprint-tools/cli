@@ -1,7 +1,7 @@
 VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev")
-LDFLAGS := -ldflags "-X github.com/footprint-tools/footprint-cli/internal/app.Version=$(VERSION)"
+LDFLAGS := -ldflags "-X github.com/footprint-tools/cli/internal/app.Version=$(VERSION)"
 
-.PHONY: all build test lint fmt clean install wipe integration simulate-activity
+.PHONY: all build test lint fmt clean install wipe integration simulate-activity changelog
 
 # Default target
 all: build
@@ -72,3 +72,25 @@ wipe:
 # Usage: make simulate-activity [REPOS=5]
 simulate-activity: build
 	./scripts/event-generator.sh $(or $(REPOS),3)
+
+# Generate changelog from git history using git-cliff
+# Requires: brew install git-cliff
+changelog:
+	@git-cliff --output CHANGELOG.md
+	@# Add comparison links for versions that are ancestors of HEAD
+	@echo "" >> CHANGELOG.md
+	@TAGS=$$(git tag -l 'v*' --sort=-version:refname --merged HEAD); \
+	PREV="HEAD"; \
+	for TAG in $$TAGS; do \
+		VER=$${TAG#v}; \
+		if [ "$$PREV" = "HEAD" ]; then \
+			echo "[Unreleased]: https://github.com/footprint-tools/cli/compare/$$TAG...HEAD" >> CHANGELOG.md; \
+		else \
+			PREV_VER=$${PREV#v}; \
+			echo "[$$PREV_VER]: https://github.com/footprint-tools/cli/compare/$$TAG...$$PREV" >> CHANGELOG.md; \
+		fi; \
+		PREV=$$TAG; \
+	done; \
+	LAST_VER=$${PREV#v}; \
+	echo "[$$LAST_VER]: https://github.com/footprint-tools/cli/releases/tag/$$PREV" >> CHANGELOG.md
+	@echo "Generated CHANGELOG.md from git history"

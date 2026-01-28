@@ -6,206 +6,214 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+
 ### Added
-- `fp completions` command to install shell completions interactively
-  - Auto-detects running shell via `$BASH_VERSION`, `$ZSH_VERSION`, `$FISH_VERSION`
-  - Fish: writes to `~/.config/fish/completions/fp.fish` (auto-loads)
-  - Bash: writes to `~/.local/share/bash-completion/completions/fp` if bash-completion installed
-  - Zsh: prompts to add eval line to `~/.zshrc`
-  - `--script` flag outputs completion script to stdout (for manual eval)
-- Shell completions auto-install during `fp setup` and `fp update`
+
+- Add shell completions command with auto-install support
+
 
 ### Changed
-- Updated README to reflect current commands and features
-- Improved test coverage for logs package (7.5% → 22.8%)
-- Renamed Makefile target `demo` to `simulate-activity` for clarity
-- Improved `makeStyle` tests with realistic ANSI code verification (extended colors, bold vs color differentiation)
+
+- update docs, improve test coverage
+- Improve test coverage and rename demo target to simulate-activity
+
 
 ### Fixed
-- Fixed lint issue in help interactive (De Morgan's law)
+
+- Fix completions: create parent dirs, add to global setup, simplify messages
+
 
 ---
-
 ## [0.0.11] - 2026-01-26
 
+
 ### Added
-- `fp repos scan` subcommand to find repos and show hook installation status
-- `fp setup [path]` and `fp teardown [path]` now accept optional path argument
-- `fp setup --core-hooks-path` for global hooks (with clear limitation warnings)
-- `fp teardown --core-hooks-path` to remove global hooks
-- Interactive logs viewer (`fp logs -i`) with filtering and navigation
-- Interactive repos manager (`fp repos -i`) to manage hooks visually
-- Hook inspection for detecting hook managers (pre-commit, husky, lefthook)
-- Configurable date/time display (`display_date`, `display_time` config options)
-- Color customization docs in configuration topic (ANSI 256-color codes)
-- Test coverage improvements (format 92%, repo 100%, git 83%, update 93%)
+
+- add database migrations system
+- add defer db.Close() to prevent database leaks
+- add config defaults with code fallback
+- add backfill command to import historical commits
+- add enriched export with per-repo CSV files
+- add --id flag to untrack orphaned repos
+- add UI improvements with color and pager support
+- add test scripts for hooks, export, and backfill
+- add ParsedFlags for typed flag access and remove duplicate helpers
+- add themes configuration and log domain
+- add tests for dispatchers package (99.6% coverage)
+- add error case tests for log package (90.5% coverage)
+- add tests for theme actions and refactor pick model (76.5% coverage)
+- add tests for logs actions (71.4% coverage)
+- add tests for ui/style package (98.2% coverage)
+- add tests for tracking actions
+- add tests for config package
+- add tests for git, hooks, paths, repo and cli packages
+- add tests for store package
+- add tests for usage, ui pager and help topics
+- add tests for setup actions and test utilities
+- add help browser action for interactive help navigation
+- Add Border color to theme system for interactive UI elements
+- Add command suggestion algorithm using Levenshtein distance
+- Add domain interfaces for dependency injection
+- Add provider implementations for domain interfaces
+- Add app factory for wiring application dependencies
+- Add watch interactive TUI mode
+- Add tests for tracking actions
+- Add splitpanel UI component for consistent two-pane layouts
+- Add UIActive and UIDim colors to theme system
+- Add internal documentation for application and export flows
+- Add git sync to export with offline mode and deduplication
+- add shell quoting for safe path embedding in hooks
+- add path traversal validation and support for git:// file:// URLs
+- add input validation for git date args and commit hashes
+- add RWMutex for thread-safe global logger access
+- add thread-safe getter/setter for InteractiveBrowserFunc
+- add mutex protection and connection cleanup for singleton
+- add warning log on chmod failure
+- add error handling for hook backup remove
+- add committed flag pattern for transaction rollback handling
+- add CloseDB helper that logs close errors
+- add bounds checking for cursor and path slicing
+- add cursor bounds validation in View method
+- add cursor negative check and optimize buffer prepend
+- add minimum height check to prevent underflow
+- add signal handling with context cancellation for clean shutdown
+- add goroutine to reap background process
+- add retry logic, CSV validation, field count checks, and file sync
+- add security note about pager command execution
+- add auto-update check and release automation
+- Add interactive logs viewer, configurable date/time display, and repo tracking fixes
+- add interactive logs viewer and repos manager
+- add repos scan command, improve setup/teardown with path args, clarify hooks docs
+
 
 ### Changed
-- `repos` is now a command group with `list` and `scan` subcommands
-- Hook status "Global hooks active" renamed to "core.hooksPath set" (clearer)
-- Documentation clarifies that `--core-hooks-path` doesn't override local settings
-- Simplified all help text with practical examples
-- Interactive help colorizes content (headers, commands, config keys)
-- Logs viewer respects user's date/time format settings
 
-### Removed
-- Removed unused commands: `track`, `untrack`, `status`, `sync-remote`
-- Removed `--repo` flag from `setup` (never implemented)
+- improve error handling in dispatcher, activity, and record commands
+- handle ambiguous remotes in track command
+- handle --flag=value format in dispatcher validation
+- update dependencies
+- simplified the store schema and add the --enrich flag to the watch and activity commands
+- progress on coverage of logging and addes more themes
+- update changelog for v0.0.8
+- Replace help-browser command with interactive help flag (-i)
+- Refactor store package for cleaner database operations
+- Simplify action dependencies and minor fixes
+- Update changelog for v0.0.8 and unreleased changes
+- Update module dependencies
+- Refactor theme picker with split panel UI
+- Refactor interactive help with split panel UI
+- Refactor watch view layout
+- Refactor export with new CSV format and year-based rotation
+- Update CLI tree and remove deprecated flags
+- Update git utilities
+- Improve config set and hooks install
+- Update help topics for configuration and data
+- Update README with new export format and configuration options
+- Make hook scripts fail-safe with || true
+- replace shell command with os.UserHomeDir()
+- implement atomic config write with temp file and rename
+- preserve inline comments when updating config values
+- use parameterized query for LIMIT clause
+- use CloseDB helper and add event ID validation
+- update tests for new behavior
+- update module path to github.com/footprint-tools/footprint-cli
+- Fix lint issues, remove docs from tracking
+- remove unused commands (track, untrack, status, sync-remote)
+- improve test coverage across packages
+- simplify and clarify all help text
+- minor improvements to setup, theme, and UI components
+- update changelog for v0.0.11
+
 
 ### Fixed
-- Flag parsing now works with space syntax (`--root ..` instead of `--root=..`)
-- Help documentation matches actual available commands
+
+- fix SQL bug, remove dead code, improve variable names, and unify test script colors
+- use Go 1.24 for CI compatibility
+- fix: use Go 1.24 in CI
+- configure git user in export test for CI environment
+
 
 ---
-
-## [0.0.10] - 2026-01-23
-
-### Fixed
-- Fixed all golangci-lint errcheck issues across the codebase
-- Properly handle return values from Printf, Println, Close, Setenv calls
-- Migrated deprecated bubbletea mouse API to new Button/Action pattern
-
-### Changed
-- Removed docs folder from version control (kept locally for development)
-
----
-
-## [0.0.9] - 2026-01-22
-
-### Added
-- Auto-update check: notifies when new version is available (non-blocking)
-- `fp update` command to download and install latest version
-- GitHub Actions workflows for CI and automated releases
-- Interactive help browser with `fp help -i` flag (replaces `help-browser` command)
-- Command suggestions for typos using Levenshtein distance
-- Border color in theme system for interactive UI elements
-- Watch interactive TUI mode
-- Domain interfaces for dependency injection
-- App factory for wiring application dependencies
-- Tests for tracking actions (adopt, backfill, export)
-
-### Changed
-- Improved Makefile: added `lint`, `fmt`, `clean`, `install`, `integration` targets
-- Replaced `help-browser` command with `-i` flag on `help`
-- Refactored store package for cleaner database operations
-- Simplified action dependencies
-
----
-
-## [0.0.8] - 2026-01-21
-
-### Added
-- Theme system with `theme list`, `theme set`, and `theme pick` commands
-- 8 built-in themes with dark/light variants: default, neon, aurora, mono, ocean, sunset, candy, contrast
-- Application logging system with `logs` command
-- `log_level` and `enable_log` configuration options
-- Interactive help browser for navigating commands and topics
-
-### Changed
-- Improved test coverage for logging, themes, and all packages
-
----
-
-## [0.0.7] - 2026-01-19
-
-### Added
-- Database migrations system for schema updates
-- `backfill` command to import historical commits from repositories
-- Enriched CSV export with per-repo directory structure
-- `--id` flag to `untrack` for removing orphaned repositories
-- `--enrich` flag to `activity` and `watch` commands
-- UI improvements with colored output
-- Pager support with `--no-pager`, `--pager=<cmd>` flags and `pager` config
-- `--flag=value` format support in addition to `--flag value`
-- `ParsedFlags` for typed flag access
-- Config defaults with code fallback
-- Test scripts for hooks, export, and backfill
-
-### Changed
-- Renamed `log` command to `watch` for clarity
-- Simplified store schema
-- Handle ambiguous remotes in `track` command
-- Improved error handling in dispatcher, activity, and record commands
-
-### Fixed
-- SQL bug in event queries
-- Database connection leaks (added proper `db.Close()`)
-- Removed dead code and improved variable naming
-
----
-
 ## [0.0.6] - 2026-01-16
 
+
 ### Added
-- README and LICENSE documentation
-- Base testing infrastructure for actions
-- Help package with embedded topic documentation (`overview`, `workflow`, `hooks`, `data`)
-- `EventFilter` struct for flexible event queries
-- `log` command for streaming events in real time
-- Detailed descriptions for all commands
-- Topic resolution in help system
-- Exit code 1 for bare `fp` invocation
+
+- add README and LICENSE
+- add EventFilter struct to support flexible event queries
+- add help package with embedded topic documentation files
+- add description field to commands for detailed help output
+- add topic resolution to help and exit code 1 for bare invocation
+- add detailed descriptions to all commands and update flag definitions
+- add CLAUDE.md to gitignore
+
 
 ### Changed
-- Reorganized actions package into `config`, `setup`, and `tracking` subpackages
-- Simplified hook script command from `repo record` to `record`
-- Reorganized command categories to follow user journey
-- Improved help output with git-like formatting
-- Renamed `telemetry` package to `store`
+
+- set base for testing of actions
+- reorganize actions package into config, setup and tracking subpackages
+- simplify hook script command from 'repo record' to 'record'
+- reorganize command categories to follow user journey
+- improve help output with git-like formatting and topic support
+- handle resolution exit code in main
+- rename telemetry package to store
+- implemented fp log
+
 
 ---
-
 ## [0.0.5] - 2026-01-14
 
+
 ### Fixed
-- Hooks installation issues
+
+- fix hooks install
+
 
 ---
-
 ## [0.0.4] - 2026-01-13
 
-### Added
-- SQLite event storage for commits, merges, checkouts, rebases, and pushes
-- `record` command (plumbing, invoked by hooks)
-- `activity` command to view recorded events
-- `export` command for CSV export
+
+### Changed
+
+- implemented telemetry module so it saves events to sqlite db and prepare the process of them
+
 
 ---
-
 ## [0.0.3] - 2026-01-13
 
+
 ### Added
-- Repository tracking with `track`, `untrack`, `repos`, `status` commands
-- Git hooks installation (`setup`, `teardown`, `check`)
-- `sync-remote` command for updating repo IDs after URL changes
+
+- add repo domain and telemetry
+
 
 ---
+## [0.0.2] - 2026-01-13
 
-## [0.0.2] - 2026-01-12
 
 ### Fixed
-- Makefile build process
-- Changed App/info from const to var for version injection
+
+- fix Makefile and make App/info var instead of const
+
+
+---
+## [0.0.1] - 2026-01-13
+
+
+### Changed
+
+- Initial commit
+- Implemented al config sub-command: get, set, unset (--all), list
+- implement version injection in build
+
 
 ---
 
-## [0.0.1] - 2026-01-12
-
-### Added
-- Initial project structure
-- CLI dispatcher with command tree
-- `config` subcommands: `get`, `set`, `unset --all`, `list`
-- `version` command with build-time injection
-
-[Unreleased]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.11...HEAD
-[0.0.11]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.10...v0.0.11
-[0.0.10]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.9...v0.0.10
-[0.0.9]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.8...v0.0.9
-[0.0.8]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.7...v0.0.8
-[0.0.7]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.6...v0.0.7
-[0.0.6]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.5...v0.0.6
-[0.0.5]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.4...v0.0.5
-[0.0.4]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.3...v0.0.4
-[0.0.3]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.2...v0.0.3
-[0.0.2]: https://github.com/footprint-tools/footprint-cli/compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/footprint-tools/footprint-cli/releases/tag/v0.0.1
+[Unreleased]: https://github.com/footprint-tools/cli/compare/v0.0.11...HEAD
+[0.0.11]: https://github.com/footprint-tools/cli/compare/v0.0.6...v0.0.11
+[0.0.6]: https://github.com/footprint-tools/cli/compare/v0.0.5...v0.0.6
+[0.0.5]: https://github.com/footprint-tools/cli/compare/v0.0.4...v0.0.5
+[0.0.4]: https://github.com/footprint-tools/cli/compare/v0.0.3...v0.0.4
+[0.0.3]: https://github.com/footprint-tools/cli/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/footprint-tools/cli/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/footprint-tools/cli/releases/tag/v0.0.1
