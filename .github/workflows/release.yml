@@ -58,7 +58,7 @@ jobs:
             OUTPUT="fp.exe"
           fi
           go build \
-            -ldflags "-s -w -X github.com/footprint-tools/footprint-cli/internal/app.Version=${VERSION}" \
+            -ldflags "-s -w -X github.com/footprint-tools/cli/internal/app.Version=${VERSION}" \
             -o ${OUTPUT} \
             ./cmd/fp
 
