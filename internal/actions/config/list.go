@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/domain"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 func List(args []string, flags *dispatchers.ParsedFlags) error {

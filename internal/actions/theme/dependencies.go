@@ -3,8 +3,8 @@ package theme
 import (
 	"fmt"
 
-	"github.com/footprint-tools/footprint-cli/internal/config"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/config"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 type Deps struct {

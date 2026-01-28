@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/store"
 )
 
 var statusMap = map[string]store.Status{

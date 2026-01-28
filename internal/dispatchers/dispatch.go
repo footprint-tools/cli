@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/footprint-tools/footprint-cli/internal/help"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/help"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 const defaultSuggestionsCount = 3
@@ -121,6 +121,15 @@ func Dispatch(root *DispatchNode, tokens []string, flags *ParsedFlags) (Resoluti
 	}
 
 	if current.Action == nil {
+		// Check for interactive flag first
+		if hasInteractiveFlag(flags) && current.InteractiveAction != nil {
+			return Resolution{
+				Node:    current,
+				Args:    args,
+				Flags:   flags,
+				Execute: current.InteractiveAction,
+			}, nil
+		}
 		// No command specified: show help but exit with code 1 (like git)
 		exitCode := 0
 		if current == root && len(tokens) == 0 {

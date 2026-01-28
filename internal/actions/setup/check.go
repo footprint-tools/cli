@@ -1,8 +1,8 @@
 package setup
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 func Check(args []string, flags *dispatchers.ParsedFlags) error {

@@ -1,15 +1,15 @@
 package cli
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/actions"
-	completionsactions "github.com/footprint-tools/footprint-cli/internal/actions/completions"
-	configactions "github.com/footprint-tools/footprint-cli/internal/actions/config"
-	logsactions "github.com/footprint-tools/footprint-cli/internal/actions/logs"
-	setupactions "github.com/footprint-tools/footprint-cli/internal/actions/setup"
-	themeactions "github.com/footprint-tools/footprint-cli/internal/actions/theme"
-	trackingactions "github.com/footprint-tools/footprint-cli/internal/actions/tracking"
-	updateactions "github.com/footprint-tools/footprint-cli/internal/actions/update"
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/actions"
+	completionsactions "github.com/footprint-tools/cli/internal/actions/completions"
+	configactions "github.com/footprint-tools/cli/internal/actions/config"
+	logsactions "github.com/footprint-tools/cli/internal/actions/logs"
+	setupactions "github.com/footprint-tools/cli/internal/actions/setup"
+	themeactions "github.com/footprint-tools/cli/internal/actions/theme"
+	trackingactions "github.com/footprint-tools/cli/internal/actions/tracking"
+	updateactions "github.com/footprint-tools/cli/internal/actions/update"
+	"github.com/footprint-tools/cli/internal/dispatchers"
 )
 
 func BuildTree() *dispatchers.DispatchNode {
@@ -65,9 +65,19 @@ func addConfigCommands(root *dispatchers.DispatchNode) {
 		Summary: "Manage settings",
 		Description: `View and change fp settings.
 
-Settings are stored in ~/.fprc. Use 'fp config list' to see current values.`,
+Settings are stored in ~/.fprc.
+
+Examples:
+  fp config list         # Show all settings
+  fp config get theme    # Get a specific setting
+  fp config set theme neon-dark
+  fp config -i           # Interactive editor`,
 		Usage: "fp config <command>",
 	})
+
+	// Interactive mode at group level (no Action = shows help by default)
+	config.Flags = ConfigFlags
+	config.InteractiveAction = configactions.Interactive
 
 	dispatchers.Command(dispatchers.CommandSpec{
 		Name:        "get",
@@ -150,9 +160,16 @@ Available themes (add -dark or -light):
   candy      Soft pastels
   contrast   High readability
 
-Example: fp theme set neon-dark`,
+Examples:
+  fp theme list         # Show all themes
+  fp theme set neon-dark
+  fp theme -i           # Interactive picker`,
 		Usage: "fp theme [command]",
 	})
+
+	// Interactive mode at group level (no Action = shows help by default)
+	theme.Flags = ThemeFlags
+	theme.InteractiveAction = themeactions.Interactive
 
 	dispatchers.Command(dispatchers.CommandSpec{
 		Name:        "list",
@@ -178,20 +195,6 @@ Example: fp theme set ocean-dark`,
 		Action:   themeactions.Set,
 		Category: dispatchers.CategoryTheme,
 	})
-
-	dispatchers.Command(dispatchers.CommandSpec{
-		Name:    "pick",
-		Parent:  theme,
-		Summary: "Browse themes interactively",
-		Description: `Opens a visual theme picker with live preview.
-
-Navigate: arrow keys or j/k
-Select:   Enter or Space
-Cancel:   q or Esc`,
-		Usage:    "fp theme pick",
-		Action:   themeactions.Pick,
-		Category: dispatchers.CategoryTheme,
-	})
 }
 
 func addTrackingCommands(root *dispatchers.DispatchNode) {
@@ -202,8 +205,9 @@ func addTrackingCommands(root *dispatchers.DispatchNode) {
 		Description: `List tracked repositories and scan for new ones.
 
 Examples:
-  fp repos              # List repos with activity
+  fp repos list         # List repos with activity
   fp repos scan         # Scan and show hook status
+  fp repos check        # Verify hooks in current repo
   fp repos -i           # Interactive hook manager
 
 To install/remove hooks, use 'fp setup' and 'fp teardown'.`,
@@ -236,9 +240,19 @@ Examples:
 		Category: dispatchers.CategoryInspectActivity,
 	})
 
-	// Interactive mode at group level
+	dispatchers.Command(dispatchers.CommandSpec{
+		Name:        "check",
+		Parent:      repos,
+		Summary:     "Verify hooks are installed",
+		Description: `Shows which hooks are installed in the current repository.`,
+		Usage:       "fp repos check",
+		Action:      setupactions.Check,
+		Category:    dispatchers.CategoryInspectActivity,
+	})
+
+	// Interactive mode at group level (no Action = shows help by default)
 	repos.Flags = ReposFlags
-	repos.Action = trackingactions.Repos
+	repos.InteractiveAction = trackingactions.ReposInteractive
 
 	dispatchers.Command(dispatchers.CommandSpec{
 		Name:    "record",
@@ -378,16 +392,6 @@ Examples:
 		Flags:    TeardownFlags,
 		Action:   setupactions.Teardown,
 		Category: dispatchers.CategoryManageRepos,
-	})
-
-	dispatchers.Command(dispatchers.CommandSpec{
-		Name:        "check",
-		Parent:      root,
-		Summary:     "Verify hooks are installed",
-		Description: `Shows which hooks are installed in the current repository.`,
-		Usage:       "fp check",
-		Action:      setupactions.Check,
-		Category:    dispatchers.CategoryInspectActivity,
 	})
 }
 

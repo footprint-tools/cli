@@ -3,7 +3,7 @@ package dispatchers
 import (
 	"testing"
 
-	"github.com/footprint-tools/footprint-cli/internal/help"
+	"github.com/footprint-tools/cli/internal/help"
 	"github.com/stretchr/testify/require"
 )
 

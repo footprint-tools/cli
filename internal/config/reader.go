@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/domain"
-	"github.com/footprint-tools/footprint-cli/internal/log"
-	"github.com/footprint-tools/footprint-cli/internal/paths"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/paths"
 )
 
 func ReadLines() ([]string, error) {

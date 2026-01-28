@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/paths"
+	"github.com/footprint-tools/cli/internal/paths"
 )
 
 // Default configuration values (in code, not persisted)

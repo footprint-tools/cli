@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
-	"github.com/footprint-tools/footprint-cli/internal/store/migrations"
+	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/store/migrations"
 )
 
 var (

@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/repo"
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/repo"
+	"github.com/footprint-tools/cli/internal/store"
 )
 
 func TestRecord_SuccessFromHook(t *testing.T) {

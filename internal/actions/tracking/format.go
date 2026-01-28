@@ -3,10 +3,10 @@ package tracking
 import (
 	"fmt"
 
-	"github.com/footprint-tools/footprint-cli/internal/format"
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/format"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 const (

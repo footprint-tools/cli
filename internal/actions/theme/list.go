@@ -2,8 +2,8 @@ package theme
 
 import (
 	"github.com/charmbracelet/lipgloss"
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 func List(args []string, flags *dispatchers.ParsedFlags) error {
@@ -30,7 +30,7 @@ func list(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		_, _ = deps.Printf("%s%-14s  %s\n", marker, name, preview)
 	}
 
-	_, _ = deps.Println("\nUse 'fp theme set <name>' or 'fp theme pick' to change")
+	_, _ = deps.Println("\nUse 'fp theme set <name>' or 'fp theme -i' to change")
 
 	return nil
 }

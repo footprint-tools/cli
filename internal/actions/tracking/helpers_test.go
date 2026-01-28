@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/store"
 )
 
 func TestResolvePath_CurrentDir(t *testing.T) {

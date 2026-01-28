@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/format"
-	"github.com/footprint-tools/footprint-cli/internal/ui/splitpanel"
+	"github.com/footprint-tools/cli/internal/format"
+	"github.com/footprint-tools/cli/internal/ui/splitpanel"
 	"github.com/charmbracelet/lipgloss"
 )
 

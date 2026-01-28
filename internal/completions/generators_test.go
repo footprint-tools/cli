@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/dispatchers"
 )
 
 func buildTestTree() *dispatchers.DispatchNode {

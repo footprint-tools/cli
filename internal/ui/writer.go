@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/domain"
 	"golang.org/x/term"
 )
 

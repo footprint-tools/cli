@@ -1,6 +1,6 @@
 package config
 
-import "github.com/footprint-tools/footprint-cli/internal/domain"
+import "github.com/footprint-tools/cli/internal/domain"
 
 // Provider wraps configuration operations and implements domain.ConfigProvider.
 type Provider struct{}

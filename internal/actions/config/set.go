@@ -1,10 +1,10 @@
 package config
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/actions/tracking"
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/domain"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/actions/tracking"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 func Set(args []string, flags *dispatchers.ParsedFlags) error {

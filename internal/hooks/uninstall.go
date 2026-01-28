@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 func Uninstall(hooksPath string) error {

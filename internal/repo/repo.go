@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/domain"
 )
 
 type RepoID string

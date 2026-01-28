@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/help"
-	"github.com/footprint-tools/footprint-cli/internal/ui"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/help"
+	"github.com/footprint-tools/cli/internal/ui"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 // commandDisplayOrder defines explicit ordering within categories.

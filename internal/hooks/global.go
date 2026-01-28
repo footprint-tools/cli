@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 // GlobalHooksDir returns the default directory for global hooks.

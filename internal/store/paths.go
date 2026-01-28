@@ -3,7 +3,7 @@ package store
 import (
 	"path/filepath"
 
-	"github.com/footprint-tools/footprint-cli/internal/paths"
+	"github.com/footprint-tools/cli/internal/paths"
 )
 
 func DBPath() string {

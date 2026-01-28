@@ -3,7 +3,7 @@ package actions
 import (
 	"fmt"
 
-	"github.com/footprint-tools/footprint-cli/internal/app"
+	"github.com/footprint-tools/cli/internal/app"
 )
 
 type actionDependencies struct {

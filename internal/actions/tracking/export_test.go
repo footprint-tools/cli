@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
 

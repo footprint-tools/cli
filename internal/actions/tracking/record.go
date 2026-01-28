@@ -1,9 +1,9 @@
 package tracking
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/log"
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/store"
 )
 
 func Record(args []string, flags *dispatchers.ParsedFlags) error {

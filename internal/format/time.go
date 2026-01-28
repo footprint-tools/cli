@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/config"
+	"github.com/footprint-tools/cli/internal/config"
 )
 
 // DateTime formats a time with both date and time according to config.

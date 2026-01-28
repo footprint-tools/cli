@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/log"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 // Backfill imports historical commits from a git repository into the database.

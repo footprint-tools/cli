@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

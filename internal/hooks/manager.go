@@ -1,6 +1,6 @@
 package hooks
 
-import "github.com/footprint-tools/footprint-cli/internal/domain"
+import "github.com/footprint-tools/cli/internal/domain"
 
 // Manager wraps git hooks operations and implements domain.HooksManager.
 type Manager struct{}

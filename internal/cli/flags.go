@@ -1,6 +1,6 @@
 package cli
 
-import "github.com/footprint-tools/footprint-cli/internal/dispatchers"
+import "github.com/footprint-tools/cli/internal/dispatchers"
 
 var (
 	RootFlags = []dispatchers.FlagDescriptor{
@@ -290,6 +290,22 @@ var (
 		{
 			Names:       []string{"--script"},
 			Description: "Print completion script to stdout (for eval)",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
+	ThemeFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"-i", "--interactive"},
+			Description: "Interactive theme picker with live preview",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
+	ConfigFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"-i", "--interactive"},
+			Description: "Interactive settings editor",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}

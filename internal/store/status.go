@@ -1,6 +1,6 @@
 package store
 
-import "github.com/footprint-tools/footprint-cli/internal/domain"
+import "github.com/footprint-tools/cli/internal/domain"
 
 // Status is an alias for domain.EventStatus.
 // Kept for backward compatibility with existing code.

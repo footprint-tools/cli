@@ -1,6 +1,6 @@
 package actions
 
-import "github.com/footprint-tools/footprint-cli/internal/dispatchers"
+import "github.com/footprint-tools/cli/internal/dispatchers"
 
 func ShowVersion(args []string, flags *dispatchers.ParsedFlags) error {
 	return showVersion(args, flags, defaultDeps())

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/app"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/app"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 const (

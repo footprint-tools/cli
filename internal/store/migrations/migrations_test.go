@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/footprint-tools/footprint-cli/internal/store/migrations"
+	"github.com/footprint-tools/cli/internal/store/migrations"
 )
 
 func TestLoad(t *testing.T) {

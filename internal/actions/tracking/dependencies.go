@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/domain"
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	repodomain "github.com/footprint-tools/footprint-cli/internal/repo"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/git"
+	repodomain "github.com/footprint-tools/cli/internal/repo"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui"
 )
 
 type Deps struct {

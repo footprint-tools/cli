@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 // RepoID constants for filesystem-safe conversion.

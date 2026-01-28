@@ -5,8 +5,9 @@ type ConfigKey struct {
 	Name        string
 	Default     string
 	Description string
-	Hidden      bool // Hidden keys are not shown in help or config list
-	HideIfEmpty bool // Only show in config list if explicitly set
+	Section     string // Section for grouping in UI (Display, Colors, Export, etc.)
+	Hidden      bool   // Hidden keys are not shown in help or config list
+	HideIfEmpty bool   // Only show in config list if explicitly set
 }
 
 // ConfigKeys defines all available configuration keys.
@@ -18,80 +19,108 @@ var ConfigKeys = []ConfigKey{
 		Name:        "pager",
 		Default:     "less -FRSX",
 		Description: "Pager command for long output",
+		Section:     "Display",
 	},
 	{
 		Name:        "theme",
 		Default:     "default",
 		Description: "Color theme: default, neon, aurora, mono, ocean, sunset, candy, contrast",
+		Section:     "Display",
 	},
 	{
 		Name:        "display_date",
 		Default:     "Jan 02",
-		Description: "Display date format: dd/mm/yyyy, mm/dd/yyyy, yyyy-mm-dd, or Go format (e.g., Jan 02, Jan 02 2006)",
+		Description: "Date format: dd/mm/yyyy, mm/dd/yyyy, yyyy-mm-dd, or Go format",
+		Section:     "Display",
 	},
 	{
 		Name:        "display_time",
 		Default:     "24h",
-		Description: "Display time format: 12h, 24h",
-	},
-	{
-		Name:        "color_success",
-		Description: "ANSI color code override for success messages",
-		HideIfEmpty: true,
-	},
-	{
-		Name:        "color_warning",
-		Description: "ANSI color code override for warning messages",
-		HideIfEmpty: true,
-	},
-	{
-		Name:        "color_error",
-		Description: "ANSI color code override for error messages",
-		HideIfEmpty: true,
-	},
-	{
-		Name:        "color_info",
-		Description: "ANSI color code override for info messages",
-		HideIfEmpty: true,
-	},
-	{
-		Name:        "color_muted",
-		Description: "ANSI color code override for muted text",
-		HideIfEmpty: true,
-	},
-	{
-		Name:        "color_header",
-		Description: "Style override for headers (e.g., 'bold')",
-		HideIfEmpty: true,
+		Description: "Time format: 12h, 24h",
+		Section:     "Display",
 	},
 	// Logging
 	{
 		Name:        "enable_log",
 		Default:     "true",
-		Description: "Enable logging to file",
+		Description: "Enable logging to file (true/false)",
+		Section:     "Logging",
 	},
 	// Export
 	{
 		Name:        "export_interval_sec",
 		Default:     "3600",
 		Description: "Seconds between automatic exports",
+		Section:     "Export",
 	},
 	{
 		Name:        "export_path",
 		Default:     "", // Set dynamically to paths.ExportRepoDir()
 		Description: "Path to the export repository",
+		Section:     "Export",
 	},
 	{
 		Name:        "export_remote",
 		Default:     "",
 		Description: "Remote URL for syncing exports",
+		Section:     "Export",
 	},
 	// Hidden (internal)
 	{
 		Name:        "export_last",
 		Default:     "0",
 		Description: "Unix timestamp of last export",
+		Section:     "Export",
 		Hidden:      true,
+	},
+	// Color Overrides - override specific colors from the current theme (ANSI 0-255)
+	{
+		Name:        "color_success",
+		Description: "Override success color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_warning",
+		Description: "Override warning color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_error",
+		Description: "Override error color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_info",
+		Description: "Override info color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_muted",
+		Description: "Override muted text color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_header",
+		Description: "Override header style from current theme (ANSI 0-255 or 'bold')",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_ui_active",
+		Description: "Override focused/active UI color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
+	},
+	{
+		Name:        "color_ui_dim",
+		Description: "Override unfocused/inactive UI color from current theme (ANSI 0-255)",
+		Section:     "Color Overrides",
+		HideIfEmpty: true,
 	},
 }
 
@@ -134,4 +163,20 @@ func VisibleConfigKeys() []ConfigKey {
 		}
 	}
 	return visible
+}
+
+// ConfigSections returns the ordered list of section names.
+func ConfigSections() []string {
+	return []string{"Display", "Logging", "Export", "Color Overrides"}
+}
+
+// ConfigKeysBySection returns visible config keys grouped by section.
+func ConfigKeysBySection() map[string][]ConfigKey {
+	result := make(map[string][]ConfigKey)
+	for _, key := range ConfigKeys {
+		if !key.Hidden {
+			result[key.Section] = append(result[key.Section], key)
+		}
+	}
+	return result
 }

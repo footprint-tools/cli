@@ -28,7 +28,6 @@ func TestBuildTree_HasExpectedTopLevelCommands(t *testing.T) {
 		"backfill",
 		"setup",
 		"teardown",
-		"check",
 		"logs",
 		"help",
 	}
@@ -58,10 +57,23 @@ func TestBuildTree_ThemeHasSubcommands(t *testing.T) {
 	theme, found := root.Children["theme"]
 	require.True(t, found, "theme group not found")
 
-	expectedSubcommands := []string{"list", "set", "pick"}
+	expectedSubcommands := []string{"list", "set"}
 	for _, sub := range expectedSubcommands {
 		_, found := theme.Children[sub]
 		require.True(t, found, "expected theme subcommand '%s' not found", sub)
+	}
+}
+
+func TestBuildTree_ReposHasSubcommands(t *testing.T) {
+	root := BuildTree()
+
+	repos, found := root.Children["repos"]
+	require.True(t, found, "repos group not found")
+
+	expectedSubcommands := []string{"list", "scan", "check"}
+	for _, sub := range expectedSubcommands {
+		_, found := repos.Children[sub]
+		require.True(t, found, "expected repos subcommand '%s' not found", sub)
 	}
 }
 
@@ -71,7 +83,6 @@ func TestBuildTree_CommandsHaveActions(t *testing.T) {
 	// Commands that should have actions
 	commandsWithActions := []string{
 		"version",
-		"repos",
 		"record",
 		"activity",
 		"watch",
@@ -79,7 +90,6 @@ func TestBuildTree_CommandsHaveActions(t *testing.T) {
 		"backfill",
 		"setup",
 		"teardown",
-		"check",
 		"logs",
 	}
 
@@ -131,18 +141,39 @@ func TestBuildTree_CommandsHaveSummary(t *testing.T) {
 	}
 }
 
-func TestBuildTree_GroupsHaveNoAction(t *testing.T) {
+func TestBuildTree_GroupsWithInteractiveFlag(t *testing.T) {
 	root := BuildTree()
 
-	// Groups should not have actions, only children
-	groups := []string{"config", "theme"}
+	// All groups have -i flag and InteractiveAction (not Action)
+	groups := []string{"config", "theme", "repos"}
 
 	for _, groupName := range groups {
 		group, found := root.Children[groupName]
 		require.True(t, found, "group '%s' not found", groupName)
-		require.Nil(t, group.Action, "group '%s' should not have an action", groupName)
+		require.Nil(t, group.Action, "group '%s' should not have Action (shows help by default)", groupName)
+		require.NotNil(t, group.InteractiveAction, "group '%s' should have InteractiveAction for -i flag", groupName)
 		require.NotEmpty(t, group.Children, "group '%s' should have children", groupName)
+		require.NotEmpty(t, group.Flags, "group '%s' should have flags", groupName)
 	}
+}
+
+func TestBuildTree_ThemeHasInteractiveFlag(t *testing.T) {
+	root := BuildTree()
+
+	theme, found := root.Children["theme"]
+	require.True(t, found, "theme group not found")
+	require.NotNil(t, theme.InteractiveAction, "theme should have InteractiveAction for -i flag")
+	require.NotEmpty(t, theme.Flags, "theme should have flags")
+
+	// Check for -i flag
+	flagNames := make(map[string]bool)
+	for _, flag := range theme.Flags {
+		for _, name := range flag.Names {
+			flagNames[name] = true
+		}
+	}
+	require.True(t, flagNames["-i"], "theme should have -i flag")
+	require.True(t, flagNames["--interactive"], "theme should have --interactive flag")
 }
 
 func TestBuildTree_SubcommandsHaveActions(t *testing.T) {
@@ -158,6 +189,12 @@ func TestBuildTree_SubcommandsHaveActions(t *testing.T) {
 	theme := root.Children["theme"]
 	for name, child := range theme.Children {
 		require.NotNil(t, child.Action, "theme subcommand '%s' should have an action", name)
+	}
+
+	// Check repos subcommands
+	repos := root.Children["repos"]
+	for name, child := range repos.Children {
+		require.NotNil(t, child.Action, "repos subcommand '%s' should have an action", name)
 	}
 }
 

@@ -3,9 +3,9 @@ package theme
 import (
 	"fmt"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 func Set(args []string, flags *dispatchers.ParsedFlags) error {

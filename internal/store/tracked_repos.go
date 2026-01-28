@@ -1,8 +1,8 @@
 package store
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/repo"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/repo"
 )
 
 // RegisteredRepo represents a repository where fp hooks are installed.

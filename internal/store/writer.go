@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 func InsertEvent(db *sql.DB, e RepoEvent) error {

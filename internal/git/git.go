@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 // dateArgPattern validates git date arguments to prevent injection

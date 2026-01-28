@@ -31,14 +31,15 @@ type ArgSpec struct {
 }
 
 type DispatchNode struct {
-	Name        string
-	Path        []string
-	Summary     string            // One-line summary for listings
-	Description string            // Longer explanation for individual help
-	Usage       string
-	Flags       []FlagDescriptor
-	Args        []ArgSpec
-	Children    map[string]*DispatchNode
-	Action      CommandFunc
-	Category    CommandCategory
+	Name              string
+	Path              []string
+	Summary           string            // One-line summary for listings
+	Description       string            // Longer explanation for individual help
+	Usage             string
+	Flags             []FlagDescriptor
+	Args              []ArgSpec
+	Children          map[string]*DispatchNode
+	Action            CommandFunc
+	InteractiveAction CommandFunc // Called when -i/--interactive flag is used (for groups without Action)
+	Category          CommandCategory
 }

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/store"
 	_ "github.com/mattn/go-sqlite3"
 )
 

@@ -1,19 +1,21 @@
 package completions
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
 // SourceInstructions returns shell-specific instructions for loading completions
 func SourceInstructions(shell Shell) string {
+	bin := GetBinaryPath()
 	switch shell {
 	case ShellBash:
-		return `eval "$(fp completions --script)"`
+		return fmt.Sprintf(`eval "$(%s completions --script)"`, bin)
 	case ShellZsh:
-		return `eval "$(fp completions --script)"`
+		return fmt.Sprintf(`eval "$(%s completions --script)"`, bin)
 	case ShellFish:
-		return `fp completions --script | source`
+		return fmt.Sprintf(`%s completions --script | source`, bin)
 	default:
 		return ""
 	}
@@ -41,14 +43,16 @@ func AutoInstallPath(shell Shell) string {
 		return ""
 	}
 
+	bin := GetBinaryName()
+
 	switch shell {
 	case ShellFish:
 		// Fish always auto-loads from this directory
-		return filepath.Join(home, ".config", "fish", "completions", "fp.fish")
+		return filepath.Join(home, ".config", "fish", "completions", bin+".fish")
 	case ShellBash:
 		// Only if bash-completion is installed
 		if IsBashCompletionInstalled() {
-			return filepath.Join(home, ".local", "share", "bash-completion", "completions", "fp")
+			return filepath.Join(home, ".local", "share", "bash-completion", "completions", bin)
 		}
 		return ""
 	default:

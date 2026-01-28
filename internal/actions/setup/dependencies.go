@@ -3,8 +3,8 @@ package setup
 import (
 	"fmt"
 
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/hooks"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/hooks"
 )
 
 type Deps struct {

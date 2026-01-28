@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 const defaultLogLimit = 50

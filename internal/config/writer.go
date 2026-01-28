@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/footprint-tools/footprint-cli/internal/paths"
+	"github.com/footprint-tools/cli/internal/paths"
 )
 
 func WriteLines(lines []string) error {

@@ -11,9 +11,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/app"
-	"github.com/footprint-tools/footprint-cli/internal/completions"
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/app"
+	"github.com/footprint-tools/cli/internal/completions"
+	"github.com/footprint-tools/cli/internal/dispatchers"
 )
 
 const (

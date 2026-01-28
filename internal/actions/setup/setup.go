@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/completions"
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/hooks"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/usage"
+	"github.com/footprint-tools/cli/internal/completions"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/hooks"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/usage"
 )
 
 func Setup(args []string, flags *dispatchers.ParsedFlags) error {

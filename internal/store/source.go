@@ -1,6 +1,6 @@
 package store
 
-import "github.com/footprint-tools/footprint-cli/internal/domain"
+import "github.com/footprint-tools/cli/internal/domain"
 
 // Source is an alias for domain.EventSource.
 // Kept for backward compatibility with existing code.

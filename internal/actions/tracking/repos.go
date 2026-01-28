@@ -6,20 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/hooks"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/hooks"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
-
-// Repos is the group handler - launches interactive mode if -i flag is set.
-func Repos(args []string, flags *dispatchers.ParsedFlags) error {
-	if flags.Has("-i") || flags.Has("--interactive") {
-		return ReposInteractive(args, flags)
-	}
-	// Default to list subcommand
-	return ReposList(args, flags)
-}
 
 // ReposList lists repositories with recorded activity.
 func ReposList(_ []string, _ *dispatchers.ParsedFlags) error {

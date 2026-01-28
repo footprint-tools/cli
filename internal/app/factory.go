@@ -1,16 +1,16 @@
 package app
 
 import (
-	"github.com/footprint-tools/footprint-cli/internal/config"
-	"github.com/footprint-tools/footprint-cli/internal/domain"
-	"github.com/footprint-tools/footprint-cli/internal/git"
-	"github.com/footprint-tools/footprint-cli/internal/hooks"
-	"github.com/footprint-tools/footprint-cli/internal/log"
-	"github.com/footprint-tools/footprint-cli/internal/paths"
-	"github.com/footprint-tools/footprint-cli/internal/repo"
-	"github.com/footprint-tools/footprint-cli/internal/store"
-	"github.com/footprint-tools/footprint-cli/internal/ui"
-	"github.com/footprint-tools/footprint-cli/internal/ui/style"
+	"github.com/footprint-tools/cli/internal/config"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/git"
+	"github.com/footprint-tools/cli/internal/hooks"
+	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/paths"
+	"github.com/footprint-tools/cli/internal/repo"
+	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 // Options configures the application factory.

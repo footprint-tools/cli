@@ -1,6 +1,6 @@
 package git
 
-import "github.com/footprint-tools/footprint-cli/internal/domain"
+import "github.com/footprint-tools/cli/internal/domain"
 
 // Provider wraps git operations and implements domain.GitProvider.
 type Provider struct{}

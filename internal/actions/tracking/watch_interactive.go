@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/footprint-tools/footprint-cli/internal/dispatchers"
-	"github.com/footprint-tools/footprint-cli/internal/store"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/store"
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
 )

@@ -1,6 +1,6 @@
 package completions
 
-import "github.com/footprint-tools/footprint-cli/internal/dispatchers"
+import "github.com/footprint-tools/cli/internal/dispatchers"
 
 // CommandInfo represents a command extracted from the dispatch tree
 type CommandInfo struct {

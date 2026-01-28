@@ -1,6 +1,6 @@
 package cli
 
-import "github.com/footprint-tools/footprint-cli/internal/dispatchers"
+import "github.com/footprint-tools/cli/internal/dispatchers"
 
 var (
 	ConfigKeyArg = []dispatchers.ArgSpec{

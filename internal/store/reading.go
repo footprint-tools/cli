@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/footprint-tools/footprint-cli/internal/log"
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 type EventFilter struct {
