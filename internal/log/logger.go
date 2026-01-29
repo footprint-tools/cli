@@ -11,7 +11,7 @@ import (
 	"github.com/footprint-tools/cli/internal/domain"
 )
 
-// Level representa el nivel de severidad del log
+// Level represents the logging severity level.
 type Level int
 
 const (
@@ -36,12 +36,11 @@ func (l Level) String() string {
 	}
 }
 
-// Logger maneja el logging a archivo de forma thread-safe
+// Logger handles thread-safe file logging.
 type Logger struct {
 	mu       sync.Mutex
 	file     *os.File
 	minLevel Level
-	enabled  bool
 }
 
 var (
@@ -50,7 +49,7 @@ var (
 	once            sync.Once
 )
 
-// Init inicializa el logger global con el archivo especificado
+// Init initializes the global logger with the specified file.
 func Init(logPath string, minLevel Level) error {
 	var err error
 	once.Do(func() {
@@ -59,9 +58,9 @@ func Init(logPath string, minLevel Level) error {
 	return err
 }
 
-// New crea un nuevo logger que escribe al archivo especificado
+// New creates a new logger that writes to the specified file.
 func New(logPath string, minLevel Level) (*Logger, error) {
-	// Crear directorio si no existe con permisos restrictivos
+	// Create directory if it doesn't exist with restrictive permissions
 	logDir := filepath.Dir(logPath)
 	if err := os.MkdirAll(logDir, 0700); err != nil {
 		return nil, fmt.Errorf("create log directory: %w", err)
@@ -77,7 +76,7 @@ func New(logPath string, minLevel Level) (*Logger, error) {
 		}
 	}
 
-	// Abrir archivo de log con permisos restrictivos
+	// Open log file with restrictive permissions
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("open log file: %w", err)
@@ -86,11 +85,10 @@ func New(logPath string, minLevel Level) (*Logger, error) {
 	return &Logger{
 		file:     file,
 		minLevel: minLevel,
-		enabled:  true,
 	}, nil
 }
 
-// Close cierra el logger
+// Close closes the logger.
 func (l *Logger) Close() error {
 	if l == nil || l.file == nil {
 		return nil
@@ -100,14 +98,14 @@ func (l *Logger) Close() error {
 	return l.file.Close()
 }
 
-// log escribe un mensaje con el nivel especificado
-func (l *Logger) log(level Level, format string, args ...interface{}) {
+// log writes a message with the specified level.
+func (l *Logger) log(level Level, format string, args ...any) {
 	l.logWithCaller(level, 3, format, args...)
 }
 
-// logWithCaller escribe un mensaje con información del caller
-func (l *Logger) logWithCaller(level Level, skip int, format string, args ...interface{}) {
-	if l == nil || !l.enabled || level < l.minLevel {
+// logWithCaller writes a message with caller information.
+func (l *Logger) logWithCaller(level Level, skip int, format string, args ...any) {
+	if l == nil || level < l.minLevel {
 		return
 	}
 
@@ -135,30 +133,30 @@ func (l *Logger) logWithCaller(level Level, skip int, format string, args ...int
 	}
 }
 
-// Debug escribe un mensaje de debug
-func (l *Logger) Debug(format string, args ...interface{}) {
+// Debug writes a debug message.
+func (l *Logger) Debug(format string, args ...any) {
 	l.log(LevelDebug, format, args...)
 }
 
-// Info escribe un mensaje informativo
-func (l *Logger) Info(format string, args ...interface{}) {
+// Info writes an informational message.
+func (l *Logger) Info(format string, args ...any) {
 	l.log(LevelInfo, format, args...)
 }
 
-// Warn escribe un warning
-func (l *Logger) Warn(format string, args ...interface{}) {
+// Warn writes a warning message.
+func (l *Logger) Warn(format string, args ...any) {
 	l.log(LevelWarn, format, args...)
 }
 
-// Error escribe un error
-func (l *Logger) Error(format string, args ...interface{}) {
+// Error writes an error message.
+func (l *Logger) Error(format string, args ...any) {
 	l.log(LevelError, format, args...)
 }
 
-// Funciones de conveniencia para el logger global
+// Package-level convenience functions for the global logger.
 
-// Debug escribe un mensaje de debug al logger global
-func Debug(format string, args ...interface{}) {
+// Debug writes a debug message to the global logger.
+func Debug(format string, args ...any) {
 	defaultLoggerMu.RLock()
 	l := defaultLogger
 	defaultLoggerMu.RUnlock()
@@ -167,8 +165,8 @@ func Debug(format string, args ...interface{}) {
 	}
 }
 
-// Info escribe un mensaje informativo al logger global
-func Info(format string, args ...interface{}) {
+// Info writes an informational message to the global logger.
+func Info(format string, args ...any) {
 	defaultLoggerMu.RLock()
 	l := defaultLogger
 	defaultLoggerMu.RUnlock()
@@ -177,8 +175,8 @@ func Info(format string, args ...interface{}) {
 	}
 }
 
-// Warn escribe un warning al logger global
-func Warn(format string, args ...interface{}) {
+// Warn writes a warning message to the global logger.
+func Warn(format string, args ...any) {
 	defaultLoggerMu.RLock()
 	l := defaultLogger
 	defaultLoggerMu.RUnlock()
@@ -187,8 +185,8 @@ func Warn(format string, args ...interface{}) {
 	}
 }
 
-// Error escribe un error al logger global
-func Error(format string, args ...interface{}) {
+// Error writes an error message to the global logger.
+func Error(format string, args ...any) {
 	defaultLoggerMu.RLock()
 	l := defaultLogger
 	defaultLoggerMu.RUnlock()
@@ -197,7 +195,7 @@ func Error(format string, args ...interface{}) {
 	}
 }
 
-// Close cierra el logger global
+// Close closes the global logger.
 func Close() error {
 	defaultLoggerMu.RLock()
 	l := defaultLogger

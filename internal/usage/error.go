@@ -73,3 +73,6 @@ func (e *Error) GetExitCode() int {
 	}
 	return 1
 }
+
+// Verify Error implements the error interface.
+var _ error = (*Error)(nil)
