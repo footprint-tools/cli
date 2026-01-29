@@ -63,7 +63,7 @@ complete -c %s -l pager -d 'Use specified pager' -r
 			fmt.Fprintf(&b, "# %s subcommands\n", cmdName)
 			for _, subcmdName := range cmd.Subcommands {
 				// Find subcommand summary
-				subcmdPath := append(cmd.Path, subcmdName)
+				subcmdPath := append(append([]string{}, cmd.Path...), subcmdName)
 				if subcmd := FindCommand(commands, subcmdPath); subcmd != nil {
 					desc := escapeForFish(subcmd.Summary)
 					fmt.Fprintf(&b, "complete -c %s -n '__fish_seen_subcommand_from %s; and not __fish_seen_subcommand_from %s' -a %s -d '%s'\n",

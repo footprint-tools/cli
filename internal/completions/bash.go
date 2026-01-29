@@ -58,7 +58,7 @@ _%s_completions() {
 		}
 
 		if len(cmd.Flags) > 0 {
-			var flagNames []string
+			flagNames := make([]string, 0, len(cmd.Flags)*2)
 			for _, f := range cmd.Flags {
 				flagNames = append(flagNames, f.Names...)
 			}

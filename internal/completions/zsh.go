@@ -85,7 +85,7 @@ _%s_commands() {
 
 			// Find subcommand summaries
 			for _, subcmdName := range cmd.Subcommands {
-				subcmdPath := append(cmd.Path, subcmdName)
+				subcmdPath := append(append([]string{}, cmd.Path...), subcmdName)
 				if subcmd := FindCommand(commands, subcmdPath); subcmd != nil {
 					summary := strings.ReplaceAll(subcmd.Summary, "'", "'\\''")
 					fmt.Fprintf(&b, "        '%s:%s'\n", subcmdName, summary)
