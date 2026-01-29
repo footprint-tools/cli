@@ -45,6 +45,11 @@ func main() {
 		ui.SetPager(pager)
 	}
 
+	// Enable quiet mode if --quiet/-q is set
+	if flags.Has("--quiet") || flags.Has("-q") {
+		ui.EnableQuiet()
+	}
+
 	// Set BuildTree function for help browser (avoids import cycle)
 	helpactions.SetBuildTreeFunc(cli.BuildTree)
 

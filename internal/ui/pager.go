@@ -19,6 +19,7 @@ import (
 var (
 	pagerDisabled bool
 	pagerOverride string
+	quietMode     bool
 )
 
 // DisablePager disables the pager globally (used by --no-pager flag).
@@ -29,6 +30,41 @@ func DisablePager() {
 // SetPager sets a pager override for this invocation (used by --pager flag).
 func SetPager(cmd string) {
 	pagerOverride = cmd
+}
+
+// EnableQuiet enables quiet mode globally (used by --quiet/-q flag).
+// In quiet mode, non-essential output is suppressed.
+func EnableQuiet() {
+	quietMode = true
+}
+
+// IsQuiet returns true if quiet mode is enabled.
+func IsQuiet() bool {
+	return quietMode
+}
+
+// Printf prints formatted output unless quiet mode is enabled.
+func Printf(format string, args ...any) (int, error) {
+	if quietMode {
+		return 0, nil
+	}
+	return fmt.Printf(format, args...)
+}
+
+// Println prints a line unless quiet mode is enabled.
+func Println(args ...any) (int, error) {
+	if quietMode {
+		return 0, nil
+	}
+	return fmt.Println(args...)
+}
+
+// Print prints output unless quiet mode is enabled.
+func Print(args ...any) (int, error) {
+	if quietMode {
+		return 0, nil
+	}
+	return fmt.Print(args...)
 }
 
 // isBypassPager returns true if the pager command means "bypass pager".

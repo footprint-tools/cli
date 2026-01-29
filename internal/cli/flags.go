@@ -15,6 +15,11 @@ var (
 			Scope:       dispatchers.FlagScopeGlobal,
 		},
 		{
+			Names:       []string{"--quiet", "-q"},
+			Description: "Suppress non-essential output (useful for scripts)",
+			Scope:       dispatchers.FlagScopeGlobal,
+		},
+		{
 			Names:       []string{"--no-color"},
 			Description: "Disable colored output",
 			Scope:       dispatchers.FlagScopeGlobal,
