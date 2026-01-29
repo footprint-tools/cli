@@ -77,21 +77,15 @@ func DeriveID(remoteURL, repoRoot string) (RepoID, error) {
 		}
 
 		// Support git:// protocol (read-only git protocol)
-		if strings.HasPrefix(remoteURL, "git://") {
-			remoteURL = strings.TrimPrefix(remoteURL, "git://")
-
-			// Validate against path traversal
-			if containsPathTraversal(remoteURL) {
+		if path, ok := strings.CutPrefix(remoteURL, "git://"); ok {
+			if containsPathTraversal(path) {
 				return "", errors.New("invalid remote url: contains path traversal sequence")
 			}
-
-			// Normalize remote URLs to lowercase to prevent duplicates
-			return RepoID(strings.ToLower(remoteURL)), nil
+			return RepoID(strings.ToLower(path)), nil
 		}
 
 		// Support file:// protocol (local repositories)
-		if strings.HasPrefix(remoteURL, "file://") {
-			path := strings.TrimPrefix(remoteURL, "file://")
+		if path, ok := strings.CutPrefix(remoteURL, "file://"); ok {
 			return RepoID("local:" + path), nil
 		}
 
@@ -121,9 +115,5 @@ func (id RepoID) ToFilesystemSafe() string {
 	idString = strings.ReplaceAll(idString, "/", "__")
 
 	// Remove leading underscores
-	for len(idString) > 0 && idString[0] == '_' {
-		idString = idString[1:]
-	}
-
-	return idString
+	return strings.TrimLeft(idString, "_")
 }

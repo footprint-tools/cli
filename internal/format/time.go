@@ -90,17 +90,11 @@ func getDateFormatShort() string {
 	case "dd/mm/yyyy":
 		return "02/01"
 	default:
-		// For custom formats, try to derive a short version by removing year patterns
-		short := displayDate
-		// Remove common year patterns
-		short = strings.ReplaceAll(short, "2006", "")
-		short = strings.ReplaceAll(short, "/06", "")
-		short = strings.ReplaceAll(short, "-06", "")
-		short = strings.ReplaceAll(short, " 06", "")
-		short = strings.TrimSpace(short)
-		short = strings.Trim(short, "/-")
+		// For custom formats, derive a short version by removing year patterns
+		yearPatterns := strings.NewReplacer("2006", "", "/06", "", "-06", "", " 06", "")
+		short := strings.Trim(strings.TrimSpace(yearPatterns.Replace(displayDate)), "/-")
 		if short == "" {
-			return "Jan 02" // fallback
+			return "Jan 02"
 		}
 		return short
 	}

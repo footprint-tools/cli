@@ -54,8 +54,9 @@ func listJSON(configMap map[string]string, deps Deps) error {
 		IsSet    bool   `json:"is_set"`
 	}
 
-	entries := make([]configEntry, 0)
-	for _, key := range domain.VisibleConfigKeys() {
+	keys := domain.VisibleConfigKeys()
+	entries := make([]configEntry, 0, len(keys))
+	for _, key := range keys {
 		value, exists := configMap[key.Name]
 		hasValue := exists && value != ""
 

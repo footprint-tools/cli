@@ -200,19 +200,14 @@ func (s *Store) UpdateStatus(ids []int64, status domain.EventStatus) error {
 		return nil
 	}
 
-	placeholders := make([]string, len(ids))
 	args := make([]any, len(ids)+1)
 	args[0] = int(status)
-
 	for i, id := range ids {
-		placeholders[i] = "?"
 		args[i+1] = id
 	}
 
-	query := fmt.Sprintf(
-		"UPDATE repo_events SET status_id = ? WHERE id IN (%s)",
-		strings.Join(placeholders, ","),
-	)
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	query := fmt.Sprintf("UPDATE repo_events SET status_id = ? WHERE id IN (%s)", placeholders)
 
 	_, err := s.db.Exec(query, args...)
 	return err
