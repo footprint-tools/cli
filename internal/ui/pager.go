@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/footprint-tools/cli/internal/config"
 	"golang.org/x/term"
@@ -20,32 +21,41 @@ var (
 	pagerDisabled bool
 	pagerOverride string
 	quietMode     bool
+	pagerMu       sync.RWMutex
 )
 
 // DisablePager disables the pager globally (used by --no-pager flag).
 func DisablePager() {
+	pagerMu.Lock()
 	pagerDisabled = true
+	pagerMu.Unlock()
 }
 
 // SetPager sets a pager override for this invocation (used by --pager flag).
 func SetPager(cmd string) {
+	pagerMu.Lock()
 	pagerOverride = cmd
+	pagerMu.Unlock()
 }
 
 // EnableQuiet enables quiet mode globally (used by --quiet/-q flag).
 // In quiet mode, non-essential output is suppressed.
 func EnableQuiet() {
+	pagerMu.Lock()
 	quietMode = true
+	pagerMu.Unlock()
 }
 
 // IsQuiet returns true if quiet mode is enabled.
 func IsQuiet() bool {
+	pagerMu.RLock()
+	defer pagerMu.RUnlock()
 	return quietMode
 }
 
 // Printf prints formatted output unless quiet mode is enabled.
 func Printf(format string, args ...any) (int, error) {
-	if quietMode {
+	if IsQuiet() {
 		return 0, nil
 	}
 	return fmt.Printf(format, args...)
@@ -53,7 +63,7 @@ func Printf(format string, args ...any) (int, error) {
 
 // Println prints a line unless quiet mode is enabled.
 func Println(args ...any) (int, error) {
-	if quietMode {
+	if IsQuiet() {
 		return 0, nil
 	}
 	return fmt.Println(args...)
@@ -61,7 +71,7 @@ func Println(args ...any) (int, error) {
 
 // Print prints output unless quiet mode is enabled.
 func Print(args ...any) (int, error) {
-	if quietMode {
+	if IsQuiet() {
 		return 0, nil
 	}
 	return fmt.Print(args...)
@@ -70,6 +80,20 @@ func Print(args ...any) (int, error) {
 // isBypassPager returns true if the pager command means "bypass pager".
 func isBypassPager(cmd string) bool {
 	return cmd == "cat"
+}
+
+// isPagerDisabled returns true if the pager is disabled.
+func isPagerDisabled() bool {
+	pagerMu.RLock()
+	defer pagerMu.RUnlock()
+	return pagerDisabled
+}
+
+// getPagerOverride returns the pager override command, if set.
+func getPagerOverride() string {
+	pagerMu.RLock()
+	defer pagerMu.RUnlock()
+	return pagerOverride
 }
 
 // Pager displays content through a pager if appropriate.
@@ -83,7 +107,7 @@ func isBypassPager(cmd string) bool {
 //  6. Default: "less -FRSX"
 func Pager(content string) {
 	// 1. --no-pager flag
-	if pagerDisabled {
+	if isPagerDisabled() {
 		fmt.Print(content)
 		return
 	}
@@ -95,12 +119,12 @@ func Pager(content string) {
 	}
 
 	// 3. --pager=<cmd> flag override
-	if pagerOverride != "" {
-		if isBypassPager(pagerOverride) {
+	if override := getPagerOverride(); override != "" {
+		if isBypassPager(override) {
 			fmt.Print(content)
 			return
 		}
-		runPagerCmd(pagerOverride, content)
+		runPagerCmd(override, content)
 		return
 	}
 
