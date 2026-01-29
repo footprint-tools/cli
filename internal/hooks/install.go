@@ -25,9 +25,9 @@ func Install(hooksPath string) error {
 	for _, hook := range ManagedHooks {
 		target := filepath.Join(hooksPath, hook)
 
-		if Exists(target) {
+		if exists(target) {
 			log.Debug("hooks: backing up existing %s", hook)
-			if err := BackupHook(hooksPath, hook); err != nil {
+			if err := backupHook(hooksPath, hook); err != nil {
 				log.Error("hooks: failed to backup %s: %v", hook, err)
 				return err
 			}

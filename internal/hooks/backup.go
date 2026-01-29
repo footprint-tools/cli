@@ -7,13 +7,13 @@ import (
 	"github.com/footprint-tools/cli/internal/log"
 )
 
-func BackupDir(hooksPath string) string {
+func backupDir(hooksPath string) string {
 	return filepath.Join(hooksPath, ".fp-backup")
 }
 
-func BackupHook(hooksPath, name string) error {
+func backupHook(hooksPath, name string) error {
 	src := filepath.Join(hooksPath, name)
-	dstDir := BackupDir(hooksPath)
+	dstDir := backupDir(hooksPath)
 
 	// Create backup directory with restrictive permissions
 	if err := os.MkdirAll(dstDir, dirPermPrivate); err != nil {

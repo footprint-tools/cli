@@ -9,13 +9,13 @@ import (
 
 func Uninstall(hooksPath string) error {
 	log.Debug("hooks: uninstalling from %s", hooksPath)
-	backupDir := BackupDir(hooksPath)
+	bkpDir := backupDir(hooksPath)
 
 	for _, hook := range ManagedHooks {
 		target := filepath.Join(hooksPath, hook)
-		backup := filepath.Join(backupDir, hook)
+		backup := filepath.Join(bkpDir, hook)
 
-		if Exists(backup) {
+		if exists(backup) {
 			if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
 				log.Warn("hooks: could not remove existing hook %s before restore: %v", hook, err)
 				// Continue anyway - rename might still work or produce a clearer error
@@ -28,7 +28,7 @@ func Uninstall(hooksPath string) error {
 			continue
 		}
 
-		if Exists(target) {
+		if exists(target) {
 			if err := os.Remove(target); err != nil {
 				log.Error("hooks: failed to remove %s: %v", hook, err)
 				return err
