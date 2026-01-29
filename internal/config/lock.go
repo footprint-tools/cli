@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -68,7 +69,7 @@ func acquireLock(lockPath string) (*os.File, error) {
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err == nil {
 			// Write our PID to the lock file for debugging
-			_, _ = f.WriteString(string(rune(os.Getpid())))
+			_, _ = f.WriteString(strconv.Itoa(os.Getpid()))
 			return f, nil
 		}
 
