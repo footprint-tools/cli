@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,9 +26,10 @@ func Log(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	db, err := deps.OpenDB(deps.DBPath())
+	dbPath := deps.DBPath()
+	db, err := deps.OpenDB(dbPath)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("failed to open database at %s: %w\nHint: Run 'fp setup' to initialize tracking in this repository", dbPath, err)
 	}
 	defer store.CloseDB(db)
 
@@ -45,15 +47,19 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	var filter store.EventFilter
 
 	if statusStr := flags.String("--status", ""); statusStr != "" {
-		if status, ok := parseStatus(statusStr); ok {
-			filter.Status = &status
+		status, ok := parseStatus(statusStr)
+		if !ok {
+			return fmt.Errorf("invalid status '%s': valid values are %s", statusStr, strings.Join(ValidStatuses(), ", "))
 		}
+		filter.Status = &status
 	}
 
 	if sourceStr := flags.String("--source", ""); sourceStr != "" {
-		if source, ok := parseSource(sourceStr); ok {
-			filter.Source = &source
+		source, ok := parseSource(sourceStr)
+		if !ok {
+			return fmt.Errorf("invalid source '%s': valid values are %s", sourceStr, strings.Join(ValidSources(), ", "))
 		}
+		filter.Source = &source
 	}
 
 	if repoID := flags.String("--repo", ""); repoID != "" {

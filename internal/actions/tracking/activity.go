@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/git"
@@ -16,9 +17,10 @@ func Activity(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	db, err := deps.OpenDB(deps.DBPath())
+	dbPath := deps.DBPath()
+	db, err := deps.OpenDB(dbPath)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("failed to open database at %s: %w\nHint: Run 'fp setup' to initialize tracking in this repository", dbPath, err)
 	}
 	defer store.CloseDB(db)
 
@@ -29,22 +31,34 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	enrich := flags.Has("--enrich")
 
 	if statusStr := flags.String("--status", ""); statusStr != "" {
-		if status, ok := parseStatus(statusStr); ok {
-			filter.Status = &status
+		status, ok := parseStatus(statusStr)
+		if !ok {
+			return fmt.Errorf("invalid status '%s': valid values are %s", statusStr, strings.Join(ValidStatuses(), ", "))
 		}
+		filter.Status = &status
 	}
 
 	if sourceStr := flags.String("--source", ""); sourceStr != "" {
-		if source, ok := parseSource(sourceStr); ok {
-			filter.Source = &source
+		source, ok := parseSource(sourceStr)
+		if !ok {
+			return fmt.Errorf("invalid source '%s': valid values are %s", sourceStr, strings.Join(ValidSources(), ", "))
 		}
+		filter.Source = &source
 	}
 
-	if since := flags.Date("--since"); since != nil {
+	if sinceStr := flags.String("--since", ""); sinceStr != "" {
+		since := flags.Date("--since")
+		if since == nil {
+			return fmt.Errorf("invalid date '%s' for --since: expected format YYYY-MM-DD", sinceStr)
+		}
 		filter.Since = since
 	}
 
-	if until := flags.Date("--until"); until != nil {
+	if untilStr := flags.String("--until", ""); untilStr != "" {
+		until := flags.Date("--until")
+		if until == nil {
+			return fmt.Errorf("invalid date '%s' for --until: expected format YYYY-MM-DD", untilStr)
+		}
 		filter.Until = until
 	}
 
