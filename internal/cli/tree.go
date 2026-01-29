@@ -283,7 +283,7 @@ Examples:
   fp activity -e        # Include commit messages
   fp activity --json    # Output as JSON
   fp activity --repo github.com/user/project  # One repo only`,
-		Usage:    "fp activity",
+		Usage:    "fp activity [options]",
 		Action:   trackingactions.Activity,
 		Flags:    ActivityFlags,
 		Category: dispatchers.CategoryInspectActivity,
@@ -301,7 +301,7 @@ Press Ctrl+C to stop.
 Examples:
   fp watch       # Stream events live
   fp watch -i    # Interactive dashboard with stats`,
-		Usage:    "fp watch",
+		Usage:    "fp watch [options]",
 		Action:   trackingactions.Log,
 		Flags:    WatchFlags,
 		Category: dispatchers.CategoryInspectActivity,
@@ -369,7 +369,7 @@ The --core-hooks-path flag sets git's global core.hooksPath. This works
 for repos WITHOUT their own core.hooksPath setting. Repos with local
 core.hooksPath (like Husky) will ignore the global setting - for those,
 integrate manually by adding 'fp record <hook>' to their hooks.`,
-		Usage:    "fp setup [path] [--core-hooks-path] [--force]",
+		Usage:    "fp setup [path] [--core-hooks-path] [--force] [--dry-run]",
 		Args:     OptionalRepoPathArg,
 		Flags:    SetupFlags,
 		Action:   setupactions.Setup,
@@ -388,7 +388,7 @@ Examples:
   fp teardown                     # Remove from current repo
   fp teardown ~/projects/myapp    # Remove from specific repo
   fp teardown --core-hooks-path   # Remove global hooks, unset core.hooksPath`,
-		Usage:    "fp teardown [path] [--core-hooks-path] [--force]",
+		Usage:    "fp teardown [path] [--core-hooks-path] [--force] [--dry-run]",
 		Args:     OptionalRepoPathArg,
 		Flags:    TeardownFlags,
 		Action:   setupactions.Teardown,
