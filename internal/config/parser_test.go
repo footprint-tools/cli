@@ -153,10 +153,10 @@ func TestParse(t *testing.T) {
 				"log_level=debug",
 			},
 			want: map[string]string{
-				"trackedRepos":    "github.com/user/repo1,github.com/user/repo2",
+				"trackedRepos":        "github.com/user/repo1,github.com/user/repo2",
 				"export_interval_sec": "3600",
-				"export_last":     "2024-01-01T00:00:00Z",
-				"log_level":       "debug",
+				"export_last":         "2024-01-01T00:00:00Z",
+				"log_level":           "debug",
 			},
 			wantErr: false,
 		},

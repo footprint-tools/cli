@@ -203,7 +203,7 @@ func TestLoadColorConfig_IndividualOverride(t *testing.T) {
 	clearColorEnvVars(t)
 
 	cfg := map[string]string{
-		"theme":   "default-dark",
+		"theme":         "default-dark",
 		"color_success": "82",
 		"color_error":   "196",
 	}

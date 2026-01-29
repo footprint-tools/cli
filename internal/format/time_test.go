@@ -85,8 +85,8 @@ func TestDateTimeShort_WithCustomFormat(t *testing.T) {
 
 func TestDate(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     string
+		name           string
+		config         string
 		expectContains string
 	}{
 		{
@@ -129,8 +129,8 @@ func TestDate(t *testing.T) {
 
 func TestDateShort(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     string
+		name           string
+		config         string
 		expectContains string
 	}{
 		{

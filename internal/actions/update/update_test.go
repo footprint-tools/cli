@@ -47,7 +47,7 @@ func TestUpdate_WithTagFlag(t *testing.T) {
 	var stdout bytes.Buffer
 	commandRun := false
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		CurrentVersion: "v1.0.0",
@@ -80,7 +80,7 @@ func TestUpdate_AlreadyAtLatestVersion(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -103,7 +103,7 @@ func TestUpdate_NoReleaseFound(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -127,7 +127,7 @@ func TestUpdate_SpecificVersionNotFound_FallsBackToSource(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -155,7 +155,7 @@ func TestFetchRelease_Latest(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -173,7 +173,7 @@ func TestFetchRelease_SpecificVersion(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -190,7 +190,7 @@ func TestFetchRelease_AddsVPrefix(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -207,7 +207,7 @@ func TestFetchRelease_HTTPError(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -223,7 +223,7 @@ func TestFetchRelease_NotFound(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -235,7 +235,7 @@ func TestFetchRelease_NotFound(t *testing.T) {
 func TestInstallFromSource_GoNotAvailable(t *testing.T) {
 	var stdout bytes.Buffer
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout: &stdout,
 		Stderr: &stdout,
 		RunCommand: func(name string, args ...string) error {
@@ -254,7 +254,7 @@ func TestInstallFromSource_GoNotAvailable(t *testing.T) {
 func TestInstallFromSource_GoInstallFails(t *testing.T) {
 	var stdout bytes.Buffer
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout: &stdout,
 		Stderr: &stdout,
 		RunCommand: func(name string, args ...string) error {
@@ -274,7 +274,7 @@ func TestInstallFromSource_Success(t *testing.T) {
 	var stdout bytes.Buffer
 	var installedPkg string
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout: &stdout,
 		Stderr: &stdout,
 		RunCommand: func(name string, args ...string) error {
@@ -292,13 +292,13 @@ func TestInstallFromSource_Success(t *testing.T) {
 	require.Contains(t, stdout.String(), "Installed v1.0.0")
 }
 
-func TestNewDependencies(t *testing.T) {
-	deps := NewDependencies("v1.0.0")
+func TestDefaultDeps(t *testing.T) {
+	deps := DefaultDeps()
 
 	require.NotNil(t, deps.Stdout)
 	require.NotNil(t, deps.Stderr)
 	require.NotNil(t, deps.HTTPClient)
-	require.Equal(t, "v1.0.0", deps.CurrentVersion)
+	require.NotEmpty(t, deps.CurrentVersion)
 	require.NotNil(t, deps.ExecutablePath)
 	require.NotNil(t, deps.RunCommand)
 }
@@ -315,7 +315,7 @@ func TestInstallFromRelease_NoBinaryForPlatform(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -402,7 +402,7 @@ func TestExtractBinary_FileNotFound(t *testing.T) {
 }
 
 func TestDownloadAndInstall_ExecutablePathError(t *testing.T) {
-	deps := Dependencies{
+	deps := Deps{
 		ExecutablePath: func() (string, error) {
 			return "", errors.New("cannot determine path")
 		},
@@ -426,7 +426,7 @@ func TestDownloadAndInstall_HTTPError(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return tmpExec.Name(), nil
@@ -450,7 +450,7 @@ func TestDownloadAndInstall_HTTPNotFound(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return tmpExec.Name(), nil
@@ -573,7 +573,7 @@ func TestFetchRelease_InvalidJSON(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 	}
 
@@ -609,7 +609,7 @@ func TestInstallFromRelease_DownloadAndInstallSuccess(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -649,7 +649,7 @@ func TestInstallFromRelease_DownloadFails(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -667,7 +667,7 @@ func TestInstallFromRelease_DownloadFails(t *testing.T) {
 func TestDownloadAndInstall_SymlinkResolveError(t *testing.T) {
 	client := &mockHTTPClient{}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			// Return a path that doesn't exist, so EvalSymlinks fails
@@ -693,7 +693,7 @@ func TestDownloadAndInstall_InvalidArchive(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return execPath, nil
@@ -732,7 +732,7 @@ func TestUpdate_WithoutFlags(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -802,7 +802,7 @@ func TestDownloadAndInstall_CopyBodyError(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return execPath, nil
@@ -845,7 +845,7 @@ func TestInstallFromRelease_WithSpecificVersion(t *testing.T) {
 	}
 
 	goInstallCalled := false
-	deps := Dependencies{
+	deps := Deps{
 		Stdout:         &stdout,
 		Stderr:         &stdout,
 		HTTPClient:     client,
@@ -892,7 +892,7 @@ func TestDownloadAndInstall_RemoveOldBinaryPermissionError(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return execPath, nil
@@ -967,7 +967,7 @@ func TestDownloadAndInstall_FullSuccessFlow(t *testing.T) {
 		},
 	}
 
-	deps := Dependencies{
+	deps := Deps{
 		HTTPClient: client,
 		ExecutablePath: func() (string, error) {
 			return execPath, nil
@@ -1010,7 +1010,7 @@ func TestCopyFile_IOCopyError(t *testing.T) {
 }
 
 func TestNewDependencies_RunCommand(t *testing.T) {
-	deps := NewDependencies("v1.0.0")
+	deps := DefaultDeps()
 
 	// Test that RunCommand actually works with a simple command
 	err := deps.RunCommand("echo", "test")
@@ -1018,7 +1018,7 @@ func TestNewDependencies_RunCommand(t *testing.T) {
 }
 
 func TestNewDependencies_ExecutablePath(t *testing.T) {
-	deps := NewDependencies("v1.0.0")
+	deps := DefaultDeps()
 
 	// Test that ExecutablePath returns something
 	path, err := deps.ExecutablePath()

@@ -20,28 +20,28 @@ func TestManagedHooks_ContainsExpectedHooks(t *testing.T) {
 	require.Equal(t, expectedHooks, ManagedHooks)
 }
 
-func TestExists_FileExists(t *testing.T) {
+func TestExists_Fileexists(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test-file")
 
 	err := os.WriteFile(filePath, []byte("content"), 0644)
 	require.NoError(t, err)
 
-	require.True(t, Exists(filePath))
+	require.True(t, exists(filePath))
 }
 
 func TestExists_FileDoesNotExist(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "nonexistent")
 
-	require.False(t, Exists(filePath))
+	require.False(t, exists(filePath))
 }
 
 func TestExists_IsDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// tmpDir is a directory, not a file
-	require.False(t, Exists(tmpDir))
+	require.False(t, exists(tmpDir))
 }
 
 func TestStatus_AllHooksExist(t *testing.T) {
@@ -113,7 +113,7 @@ func TestScript_DifferentSources(t *testing.T) {
 func TestBackupDir_ReturnsCorrectPath(t *testing.T) {
 	hooksPath := "/home/user/.config/git/hooks"
 
-	backupDir := BackupDir(hooksPath)
+	backupDir := backupDir(hooksPath)
 
 	require.Equal(t, "/home/user/.config/git/hooks/.fp-backup", backupDir)
 }
@@ -129,15 +129,15 @@ func TestBackupHook_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Backup the hook
-	err = BackupHook(tmpDir, hookName)
+	err = backupHook(tmpDir, hookName)
 	require.NoError(t, err)
 
 	// Verify original is gone
-	require.False(t, Exists(hookPath))
+	require.False(t, exists(hookPath))
 
 	// Verify backup exists
-	backupPath := filepath.Join(BackupDir(tmpDir), hookName)
-	require.True(t, Exists(backupPath))
+	backupPath := filepath.Join(backupDir(tmpDir), hookName)
+	require.True(t, exists(backupPath))
 
 	// Verify content is preserved
 	content, err := os.ReadFile(backupPath)
@@ -154,12 +154,12 @@ func TestBackupHook_CreatesDirIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 
 	// Backup dir doesn't exist yet
-	backupDir := BackupDir(tmpDir)
+	backupDir := backupDir(tmpDir)
 	_, err = os.Stat(backupDir)
 	require.True(t, os.IsNotExist(err))
 
 	// Backup should create the dir
-	err = BackupHook(tmpDir, hookName)
+	err = backupHook(tmpDir, hookName)
 	require.NoError(t, err)
 
 	// Backup dir now exists
@@ -177,7 +177,7 @@ func TestInstall_Success(t *testing.T) {
 	// Verify all hooks were installed
 	for _, hook := range ManagedHooks {
 		hookPath := filepath.Join(tmpDir, hook)
-		require.True(t, Exists(hookPath), "hook '%s' should be installed", hook)
+		require.True(t, exists(hookPath), "hook '%s' should be installed", hook)
 
 		// Verify the hook is executable
 		info, err := os.Stat(hookPath)
@@ -199,8 +199,8 @@ func TestInstall_BacksUpExistingHooks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify backup was created
-	backupPath := filepath.Join(BackupDir(tmpDir), "post-commit")
-	require.True(t, Exists(backupPath))
+	backupPath := filepath.Join(backupDir(tmpDir), "post-commit")
+	require.True(t, exists(backupPath))
 
 	// Verify backup content is correct
 	content, err := os.ReadFile(backupPath)
@@ -208,7 +208,7 @@ func TestInstall_BacksUpExistingHooks(t *testing.T) {
 	require.Equal(t, originalContent, string(content))
 
 	// Verify new hook was installed
-	require.True(t, Exists(existingHook))
+	require.True(t, exists(existingHook))
 	newContent, err := os.ReadFile(existingHook)
 	require.NoError(t, err)
 	require.Contains(t, string(newContent), "record")
@@ -229,7 +229,7 @@ func TestUninstall_RemovesHooks(t *testing.T) {
 	// Verify all hooks were removed
 	for _, hook := range ManagedHooks {
 		hookPath := filepath.Join(tmpDir, hook)
-		require.False(t, Exists(hookPath), "hook '%s' should be removed", hook)
+		require.False(t, exists(hookPath), "hook '%s' should be removed", hook)
 	}
 }
 
@@ -255,7 +255,7 @@ func TestUninstall_RestoresBackups(t *testing.T) {
 	// Verify original hooks were restored
 	for _, hook := range ManagedHooks {
 		hookPath := filepath.Join(tmpDir, hook)
-		require.True(t, Exists(hookPath), "hook '%s' should be restored", hook)
+		require.True(t, exists(hookPath), "hook '%s' should be restored", hook)
 
 		content, err := os.ReadFile(hookPath)
 		require.NoError(t, err)

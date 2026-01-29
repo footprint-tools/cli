@@ -171,11 +171,12 @@ func TestFindSimilarCommands(t *testing.T) {
 
 			got := FindSimilarCommands(tt.input, node, tt.maxResults)
 
-			if tt.want == nil {
+			switch {
+			case tt.want == nil:
 				require.Nil(t, got)
-			} else if len(tt.want) == 0 {
+			case len(tt.want) == 0:
 				require.Empty(t, got)
-			} else {
+			default:
 				require.Equal(t, tt.want, got)
 			}
 		})

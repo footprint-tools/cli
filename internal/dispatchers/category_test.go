@@ -53,4 +53,3 @@ func TestCategoryOrderFunction(t *testing.T) {
 	require.Contains(t, order, CategoryInspectActivity)
 	require.Contains(t, order, CategoryManageRepos)
 }
-

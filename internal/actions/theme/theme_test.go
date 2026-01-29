@@ -29,7 +29,9 @@ func TestList_Success(t *testing.T) {
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				printedLines = append(printedLines, a[0].(string))
+				if s, ok := a[0].(string); ok {
+					printedLines = append(printedLines, s)
+				}
 			}
 			return 0, nil
 		},
@@ -59,7 +61,9 @@ func TestList_NoCurrentTheme(t *testing.T) {
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				printedLines = append(printedLines, a[0].(string))
+				if s, ok := a[0].(string); ok {
+					printedLines = append(printedLines, s)
+				}
 			}
 			return 0, nil
 		},
@@ -132,7 +136,9 @@ func TestSet_UnknownTheme(t *testing.T) {
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				printedLines = append(printedLines, a[0].(string))
+				if s, ok := a[0].(string); ok {
+					printedLines = append(printedLines, s)
+				}
 			}
 			return 0, nil
 		},

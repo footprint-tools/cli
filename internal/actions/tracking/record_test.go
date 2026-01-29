@@ -169,9 +169,7 @@ func TestRecord_SuccessWithVerboseFlag(t *testing.T) {
 		InsertEvent: func(db *sql.DB, event store.RepoEvent) error {
 			return nil
 		},
-		Now: func() time.Time {
-			return time.Now()
-		},
+		Now: time.Now,
 		Println: func(a ...any) (int, error) {
 			return 0, nil
 		},
@@ -321,9 +319,7 @@ func TestRecord_DifferentSourceTypes(t *testing.T) {
 					insertedEvent = event
 					return nil
 				},
-				Now: func() time.Time {
-					return time.Now()
-				},
+				Now: time.Now,
 				Println: func(a ...any) (int, error) {
 					return 0, nil
 				},
@@ -430,9 +426,7 @@ func TestRecord_InsertEventError(t *testing.T) {
 		InsertEvent: func(db *sql.DB, event store.RepoEvent) error {
 			return errors.New("insert failed")
 		},
-		Now: func() time.Time {
-			return time.Now()
-		},
+		Now: time.Now,
 		Println: func(a ...any) (int, error) {
 			return 0, nil
 		},

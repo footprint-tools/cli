@@ -23,7 +23,7 @@ func TestGet_Success(t *testing.T) {
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				capturedValue = a[0].(string)
+				capturedValue, _ = a[0].(string)
 			}
 			return 0, nil
 		},
@@ -233,7 +233,7 @@ func TestUnset_AllFlag(t *testing.T) {
 		},
 		Println: func(a ...any) (int, error) {
 			if len(a) > 0 {
-				capturedPrintln = a[0].(string)
+				capturedPrintln, _ = a[0].(string)
 			}
 			return 0, nil
 		},
@@ -312,8 +312,8 @@ func TestList_Success(t *testing.T) {
 	deps := Deps{
 		GetAll: func() (map[string]string, error) {
 			return map[string]string{
-				"theme": "neon",
-				"log_level":   "info",
+				"theme":     "neon",
+				"log_level": "info",
 			}, nil
 		},
 		Printf: func(format string, a ...any) (int, error) {
@@ -385,4 +385,28 @@ func TestList_GetAllError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot read config")
+}
+
+func TestList_JSON(t *testing.T) {
+	var printedOutput string
+	deps := Deps{
+		GetAll: func() (map[string]string, error) {
+			return map[string]string{
+				"theme": "neon",
+			}, nil
+		},
+		Println: func(a ...any) (int, error) {
+			if len(a) > 0 {
+				printedOutput, _ = a[0].(string)
+			}
+			return 0, nil
+		},
+	}
+
+	flags := dispatchers.NewParsedFlags([]string{"--json"})
+	err := list([]string{}, flags, deps)
+
+	require.NoError(t, err)
+	require.Contains(t, printedOutput, `"key":`)
+	require.Contains(t, printedOutput, `"value":`)
 }

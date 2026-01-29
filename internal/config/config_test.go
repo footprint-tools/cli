@@ -28,22 +28,22 @@ func TestReadLines(t *testing.T) {
 	}{
 		// Empty file case is tested in TestReadLines_CreatesFileIfNotExists
 		{
-			name: "single line",
+			name:         "single line",
 			setupContent: "key=value\n",
 			wantLines:    []string{"key=value"},
 		},
 		{
-			name: "multiple lines",
+			name:         "multiple lines",
 			setupContent: "key1=value1\nkey2=value2\nkey3=value3\n",
 			wantLines:    []string{"key1=value1", "key2=value2", "key3=value3"},
 		},
 		{
-			name: "lines with comments",
+			name:         "lines with comments",
 			setupContent: "# Comment\nkey=value\n",
 			wantLines:    []string{"# Comment", "key=value"},
 		},
 		{
-			name: "Windows CRLF line endings",
+			name:         "Windows CRLF line endings",
 			setupContent: "key1=value1\r\nkey2=value2\r\n",
 			wantLines:    []string{"key1=value1", "key2=value2"},
 		},
@@ -168,12 +168,12 @@ func TestWriteLines_Overwrites(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		initialLines []string
-		key         string
-		value       string
-		wantLines   []string
-		wantUpdated bool
+		key          string
+		value        string
+		wantLines    []string
+		wantUpdated  bool
 	}{
 		{
 			name:         "add to empty",
@@ -228,11 +228,11 @@ func TestSet(t *testing.T) {
 
 func TestUnset(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		initialLines []string
-		key         string
-		wantLines   []string
-		wantRemoved bool
+		key          string
+		wantLines    []string
+		wantRemoved  bool
 	}{
 		{
 			name:         "remove from empty",

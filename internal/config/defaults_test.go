@@ -10,11 +10,11 @@ import (
 
 func TestGet(t *testing.T) {
 	tests := []struct {
-		name         string
-		configLines  []string
-		key          string
-		wantValue    string
-		wantFound    bool
+		name        string
+		configLines []string
+		key         string
+		wantValue   string
+		wantFound   bool
 	}{
 		{
 			name:        "key exists in config file",
@@ -165,8 +165,8 @@ func TestGetAll(t *testing.T) {
 			configLines: []string{},
 			wantContains: map[string]string{
 				"export_interval_sec": "3600",
-				"enable_log":     "true",
-				"theme":     "default",
+				"enable_log":          "true",
+				"theme":               "default",
 			},
 		},
 		{
@@ -177,8 +177,8 @@ func TestGetAll(t *testing.T) {
 			},
 			wantContains: map[string]string{
 				"export_interval_sec": "7200",
-				"theme":     "neon",
-				"enable_log":     "true", // Still default
+				"theme":               "neon",
+				"enable_log":          "true", // Still default
 			},
 		},
 		{
@@ -188,8 +188,8 @@ func TestGetAll(t *testing.T) {
 				"custom_key2=value2",
 			},
 			wantContains: map[string]string{
-				"custom_key1":     "value1",
-				"custom_key2":     "value2",
+				"custom_key1":         "value1",
+				"custom_key2":         "value2",
 				"export_interval_sec": "3600", // Default still present
 			},
 		},
@@ -201,8 +201,8 @@ func TestGetAll(t *testing.T) {
 			},
 			wantContains: map[string]string{
 				"export_interval_sec": "1800",
-				"custom":          "value",
-				"enable_log":     "true",
+				"custom":              "value",
+				"enable_log":          "true",
 			},
 		},
 	}

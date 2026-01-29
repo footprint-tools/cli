@@ -118,16 +118,16 @@ func TestAppDataDir_CreatesDirectory(t *testing.T) {
 
 func TestPaths_NoDotDotComponents(t *testing.T) {
 	// Security check: paths should not contain ..
+	cfgPath, err := ConfigFilePath()
+	require.NoError(t, err)
+
 	paths := []string{
 		AppDataDir(),
 		AppLocalDataDir(),
 		ExportRepoDir(),
 		LogFilePath(),
+		cfgPath,
 	}
-
-	cfgPath, err := ConfigFilePath()
-	require.NoError(t, err)
-	paths = append(paths, cfgPath)
 
 	for _, p := range paths {
 		require.False(t, strings.Contains(p, ".."),

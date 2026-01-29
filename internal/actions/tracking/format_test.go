@@ -20,7 +20,7 @@ func TestFormatEvent_Oneline(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	output := FormatEvent(event, true)
+	output := formatEvent(event, true)
 
 	require.Contains(t, output, "abc1234")
 	require.Contains(t, output, "main")
@@ -37,7 +37,7 @@ func TestFormatEvent_Multiline(t *testing.T) {
 		Timestamp: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
 	}
 
-	output := FormatEvent(event, false)
+	output := formatEvent(event, false)
 
 	require.Contains(t, output, "abc1234")
 	require.Contains(t, output, "main")
@@ -90,7 +90,7 @@ func TestFormatEventEnriched_Oneline(t *testing.T) {
 		Subject:     "Fix a bug in the code",
 	}
 
-	output := FormatEventEnriched(event, meta, true)
+	output := formatEventEnriched(event, meta, true)
 
 	require.Contains(t, output, "abc1234")
 	require.Contains(t, output, "github.com/test/repo")
@@ -113,7 +113,7 @@ func TestFormatEventEnriched_Oneline_LongSubject(t *testing.T) {
 		Subject:     "This is a very long commit message that should be truncated for display purposes",
 	}
 
-	output := FormatEventEnriched(event, meta, true)
+	output := formatEventEnriched(event, meta, true)
 
 	// Should be truncated with ...
 	require.Contains(t, output, "...")
@@ -135,7 +135,7 @@ func TestFormatEventEnriched_Multiline(t *testing.T) {
 		Subject:     "Fix a bug",
 	}
 
-	output := FormatEventEnriched(event, meta, false)
+	output := formatEventEnriched(event, meta, false)
 
 	require.Contains(t, output, "abc1234")
 	require.Contains(t, output, "github.com/test/repo")

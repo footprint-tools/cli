@@ -7,10 +7,10 @@ import (
 
 func TestExtractFlagsAndCommands(t *testing.T) {
 	tests := []struct {
-		name          string
-		args          []string
-		wantFlags     []string
-		wantCommands  []string
+		name         string
+		args         []string
+		wantFlags    []string
+		wantCommands []string
 	}{
 		{
 			name:         "no flags or commands",

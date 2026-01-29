@@ -3,12 +3,12 @@ package help
 import (
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/help"
 	"github.com/footprint-tools/cli/internal/ui/splitpanel"
 	"github.com/footprint-tools/cli/internal/ui/style"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/require"
 )
 
