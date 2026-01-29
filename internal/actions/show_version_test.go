@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,8 @@ func TestShowVersion_PrintsVersion(t *testing.T) {
 		},
 	}
 
-	err := showVersion(nil, nil, deps)
+	flags := dispatchers.NewParsedFlags(nil)
+	err := showVersion(nil, flags, deps)
 
 	require.NoError(t, err)
 	require.Equal(t, "fp version 1.2.3\n", printed)

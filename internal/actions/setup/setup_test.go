@@ -98,6 +98,9 @@ func TestSetup_ExistingHooksWithConfirmation(t *testing.T) {
 			}
 			return 0, nil
 		},
+		IsStdinTTY: func() bool {
+			return true
+		},
 	}
 
 	flags := dispatchers.NewParsedFlags([]string{})
@@ -139,6 +142,9 @@ func TestSetup_ExistingHooksDeclined(t *testing.T) {
 				*ptr = "n"
 			}
 			return 0, nil
+		},
+		IsStdinTTY: func() bool {
+			return true
 		},
 	}
 
@@ -262,6 +268,9 @@ func TestTeardown_Success(t *testing.T) {
 			}
 			return 0, nil
 		},
+		IsStdinTTY: func() bool {
+			return true
+		},
 	}
 
 	flags := dispatchers.NewParsedFlags([]string{})
@@ -310,6 +319,9 @@ func TestTeardown_Declined(t *testing.T) {
 				*ptr = "n"
 			}
 			return 0, nil
+		},
+		IsStdinTTY: func() bool {
+			return true
 		},
 	}
 
@@ -373,6 +385,9 @@ func TestTeardown_UninstallError(t *testing.T) {
 				*ptr = "y"
 			}
 			return 0, nil
+		},
+		IsStdinTTY: func() bool {
+			return true
 		},
 	}
 
