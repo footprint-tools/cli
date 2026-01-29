@@ -33,8 +33,8 @@ type ArgSpec struct {
 type DispatchNode struct {
 	Name              string
 	Path              []string
-	Summary           string            // One-line summary for listings
-	Description       string            // Longer explanation for individual help
+	Summary           string // One-line summary for listings
+	Description       string // Longer explanation for individual help
 	Usage             string
 	Flags             []FlagDescriptor
 	Args              []ArgSpec

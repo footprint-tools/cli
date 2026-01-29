@@ -25,7 +25,7 @@ func NewNode(
 	if parent == nil {
 		node.Path = []string{name}
 	} else {
-		node.Path = append(parent.Path, name)
+		node.Path = append(append([]string{}, parent.Path...), name)
 		parent.Children[name] = node
 	}
 

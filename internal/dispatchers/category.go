@@ -3,13 +3,13 @@ package dispatchers
 type CommandCategory int
 
 const (
-	CategoryUncategorized CommandCategory = iota
-	CategoryGetStarted        // First steps: setup, track
-	CategoryInspectActivity   // Viewing activity and state
-	CategoryManageRepos       // Managing tracked repositories
-	CategoryConfig            // Configuration
-	CategoryTheme             // Theme customization
-	CategoryPlumbing          // Low-level/plumbing commands (record)
+	CategoryUncategorized   CommandCategory = iota
+	CategoryGetStarted                      // First steps: setup, track
+	CategoryInspectActivity                 // Viewing activity and state
+	CategoryManageRepos                     // Managing tracked repositories
+	CategoryConfig                          // Configuration
+	CategoryTheme                           // Theme customization
+	CategoryPlumbing                        // Low-level/plumbing commands (record)
 )
 
 func (c CommandCategory) String() string {

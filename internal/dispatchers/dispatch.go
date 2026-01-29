@@ -116,6 +116,11 @@ func Dispatch(root *DispatchNode, tokens []string, flags *ParsedFlags) (Resoluti
 		return Resolution{}, err
 	}
 
+	// Check for conflicting flags: --interactive/-i and --json are mutually exclusive
+	if hasInteractiveFlag(flags) && flags.Has("--json") {
+		return Resolution{}, usage.ConflictingFlags("--interactive", "--json")
+	}
+
 	if err := validateArgs(current.Args, args); err != nil {
 		return Resolution{}, err
 	}
