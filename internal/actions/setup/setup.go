@@ -24,6 +24,7 @@ func setup(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 func setupLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	force := flags.Has("--force")
+	dryRun := flags.Has("--dry-run")
 
 	// Determine target path
 	targetPath := "."
@@ -48,6 +49,16 @@ func setupLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) error 
 		if installed {
 			backedUp++
 		}
+	}
+
+	if dryRun {
+		_, _ = deps.Println("dry-run: would install hooks to:")
+		_, _ = deps.Printf("  %s\n", hooksPath)
+		_, _ = deps.Printf("  hooks: %s\n", strings.Join(hooks.ManagedHooks, ", "))
+		if backedUp > 0 {
+			_, _ = deps.Printf("  %d existing hooks would be backed up\n", backedUp)
+		}
+		return nil
 	}
 
 	if backedUp > 0 && !force {
@@ -90,6 +101,7 @@ func setupLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) error 
 
 func setupGlobal(flags *dispatchers.ParsedFlags, deps Deps) error {
 	force := flags.Has("--force")
+	dryRun := flags.Has("--dry-run")
 
 	// Get global hooks directory
 	globalDir, err := hooks.GlobalHooksDir()
@@ -99,6 +111,16 @@ func setupGlobal(flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	// Check current global hooks status
 	status := hooks.CheckGlobalHooksStatus()
+
+	if dryRun {
+		_, _ = deps.Println("dry-run: would install global hooks to:")
+		_, _ = deps.Printf("  %s\n", globalDir)
+		_, _ = deps.Printf("  hooks: %s\n", strings.Join(hooks.ManagedHooks, ", "))
+		if status.IsSet {
+			_, _ = deps.Printf("  current core.hooksPath: %s\n", status.Path)
+		}
+		return nil
+	}
 
 	// Show warning banner
 	_, _ = deps.Println("")

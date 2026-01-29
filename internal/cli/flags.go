@@ -113,6 +113,11 @@ var (
 			Description: "Overwrite existing hooks without prompting",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--dry-run"},
+			Description: "Show what would be installed without doing it",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
 	TeardownFlags = []dispatchers.FlagDescriptor{
@@ -124,6 +129,11 @@ var (
 		{
 			Names:       []string{"--force"},
 			Description: "Remove hooks without prompting",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--dry-run"},
+			Description: "Show what would be removed without doing it",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}

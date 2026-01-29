@@ -22,6 +22,7 @@ func teardown(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 func teardownLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	force := flags.Has("--force")
+	dryRun := flags.Has("--dry-run")
 
 	// Determine target path
 	targetPath := "."
@@ -37,6 +38,13 @@ func teardownLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) err
 	hooksPath, err := deps.RepoHooksPath(root)
 	if err != nil {
 		return err
+	}
+
+	if dryRun {
+		_, _ = deps.Println("dry-run: would remove hooks from:")
+		_, _ = deps.Printf("  %s\n", hooksPath)
+		_, _ = deps.Println("  previous hooks would be restored if available")
+		return nil
 	}
 
 	if !force {
@@ -64,12 +72,20 @@ func teardownLocal(args []string, flags *dispatchers.ParsedFlags, deps Deps) err
 
 func teardownGlobal(flags *dispatchers.ParsedFlags, deps Deps) error {
 	force := flags.Has("--force")
+	dryRun := flags.Has("--dry-run")
 
 	// Check current global hooks status
 	status := hooks.CheckGlobalHooksStatus()
 
 	if !status.IsSet {
 		_, _ = deps.Println("No global hooks are configured (core.hooksPath is not set)")
+		return nil
+	}
+
+	if dryRun {
+		_, _ = deps.Println("dry-run: would remove global hooks from:")
+		_, _ = deps.Printf("  %s\n", status.Path)
+		_, _ = deps.Println("  core.hooksPath would be unset")
 		return nil
 	}
 
