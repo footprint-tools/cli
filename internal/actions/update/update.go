@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -21,6 +22,14 @@ const (
 	repoName  = "footprint-cli"
 	apiURL    = "https://api.github.com/repos/" + repoOwner + "/" + repoName
 )
+
+// ensureVersionPrefix adds "v" prefix if not present.
+func ensureVersionPrefix(version string) string {
+	if strings.HasPrefix(version, "v") {
+		return version
+	}
+	return "v" + version
+}
 
 type githubRelease struct {
 	TagName string        `json:"tag_name"`
@@ -108,11 +117,7 @@ func fetchRelease(deps Dependencies, version string) (*githubRelease, error) {
 	if version == "" {
 		url = apiURL + "/releases/latest"
 	} else {
-		// Ensure version has 'v' prefix for GitHub API
-		if !strings.HasPrefix(version, "v") {
-			version = "v" + version
-		}
-		url = apiURL + "/releases/tags/" + version
+		url = apiURL + "/releases/tags/" + ensureVersionPrefix(version)
 	}
 
 	resp, err := deps.HTTPClient.Get(url)
@@ -121,7 +126,7 @@ func fetchRelease(deps Dependencies, version string) (*githubRelease, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("release not found (status %d)", resp.StatusCode)
 	}
 
@@ -153,7 +158,7 @@ func downloadAndInstall(deps Dependencies, url string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed (status %d)", resp.StatusCode)
 	}
 
@@ -271,10 +276,7 @@ func installFromSource(deps Dependencies, version string) error {
 		return fmt.Errorf("fp: go is not installed (needed to build from source)")
 	}
 
-	// Ensure version has 'v' prefix
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
-	}
+	version = ensureVersionPrefix(version)
 
 	_, _ = fmt.Fprintf(deps.Stdout, "Building %s from source...\n", version)
 

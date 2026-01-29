@@ -18,6 +18,8 @@ import (
 const (
 	// CheckInterval is how often to check for updates (24 hours)
 	CheckInterval = 24 * time.Hour
+	// updateNoticeWidth is the width of the update notice border
+	updateNoticeWidth = 50
 )
 
 // CheckResult contains the result of an update check
@@ -137,7 +139,7 @@ func fetchLatestVersionQuick(client HTTPClient) (string, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to fetch latest version (status %d)", resp.StatusCode)
 	}
 
@@ -179,7 +181,7 @@ func printUpdateNotice(deps CheckDependencies) {
 
 	// Print with border
 	border := style.Border("─")
-	line := strings.Repeat(border, 50)
+	line := strings.Repeat(border, updateNoticeWidth)
 	_, _ = fmt.Fprintf(deps.Stderr, "\n%s\n  %s\n%s\n\n", line, notice, line)
 }
 

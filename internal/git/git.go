@@ -73,18 +73,7 @@ func ListRemotes(repoRoot string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(out) == "" {
-		return []string{}, nil
-	}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	remotes := make([]string, 0, len(lines))
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			remotes = append(remotes, line)
-		}
-	}
-	return remotes, nil
+	return splitLines(out), nil
 }
 
 // GetRemoteURL returns the URL for a specific remote.
@@ -129,6 +118,23 @@ func runGit(args ...string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+// splitLines splits output into non-empty trimmed lines.
+// Returns nil if output is empty.
+func splitLines(output string) []string {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return nil
+	}
+	lines := strings.Split(output, "\n")
+	result := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line = strings.TrimSpace(line); line != "" {
+			result = append(result, line)
+		}
+	}
+	return result
 }
 
 // CommitMetadata contains enriched data from Git for a specific commit.
@@ -209,44 +215,22 @@ func truncateCommit(commit string, maxLen int) string {
 
 // parseParents parses the output of git rev-parse commit^@ into a slice of parent hashes.
 func parseParents(output string) []string {
-	if strings.TrimSpace(output) == "" {
-		return nil
-	}
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	parents := make([]string, 0, len(lines))
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			parents = append(parents, line)
-		}
-	}
-	return parents
+	return splitLines(output)
 }
 
 // parseDiffStats parses git diff-tree --numstat output into DiffStats.
 func parseDiffStats(output string) DiffStats {
 	stats := DiffStats{}
-	if strings.TrimSpace(output) == "" {
-		return stats
-	}
 
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
+	for _, line := range splitLines(output) {
 		parts := strings.SplitN(line, "\t", 3)
 		if len(parts) < 2 {
 			continue
 		}
 
-		ins := parseNumstat(parts[0])
-		del := parseNumstat(parts[1])
-
 		stats.FilesChanged++
-		stats.Insertions += ins
-		stats.Deletions += del
+		stats.Insertions += parseNumstat(parts[0])
+		stats.Deletions += parseNumstat(parts[1])
 	}
 
 	return stats
@@ -329,28 +313,27 @@ func ListCommits(repoPath string, opts ListCommitsOptions) ([]HistoryCommit, err
 func GetBranchForCommit(repoPath, commit string) string {
 	// Get all branches that contain this commit
 	out, err := runGitInRepo(repoPath, "branch", "--contains", commit, "--format=%(refname:short)")
-	if err != nil || strings.TrimSpace(out) == "" {
+	if err != nil {
 		return ""
 	}
 
-	branches := strings.Split(strings.TrimSpace(out), "\n")
+	branches := splitLines(out)
 	if len(branches) == 0 {
 		return ""
 	}
 
 	// If only one branch, use it
 	if len(branches) == 1 {
-		return strings.TrimSpace(branches[0])
+		return branches[0]
 	}
 
 	// Prefer main/master if present
 	for _, b := range branches {
-		b = strings.TrimSpace(b)
 		if b == "main" || b == "master" {
 			return b
 		}
 	}
 
 	// Return the first branch
-	return strings.TrimSpace(branches[0])
+	return branches[0]
 }
