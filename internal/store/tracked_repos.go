@@ -43,7 +43,7 @@ func (s *Store) ListRepos() ([]RegisteredRepo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var repos []RegisteredRepo
 	for rows.Next() {
@@ -62,7 +62,7 @@ func (s *Store) ListRepoPaths() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var paths []string
 	for rows.Next() {

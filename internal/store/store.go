@@ -10,6 +10,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/log"
 	"github.com/footprint-tools/cli/internal/store/migrations"
 )
 
@@ -33,6 +34,12 @@ func New(path string) (*Store, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
+	// Configure SQLite for better concurrency and reliability
+	if err = configureSQLite(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("configure database: %w", err)
+	}
+
 	setDBPermissions(path)
 
 	if err = migrations.Run(db); err != nil {
@@ -41,6 +48,30 @@ func New(path string) (*Store, error) {
 	}
 
 	return &Store{db: db, path: path}, nil
+}
+
+// configureSQLite sets pragmas for better concurrency and reliability.
+// WAL mode allows concurrent reads during writes and is more resilient to corruption.
+// busy_timeout prevents "database is locked" errors during concurrent access.
+func configureSQLite(db *sql.DB) error {
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL",   // Write-Ahead Logging for better concurrency
+		"PRAGMA busy_timeout=5000",  // Wait up to 5 seconds if locked
+		"PRAGMA synchronous=NORMAL", // Safe with WAL, better performance
+		"PRAGMA foreign_keys=ON",    // Enforce foreign key constraints
+		"PRAGMA cache_size=-64000",  // 64MB cache (negative = KB)
+	}
+
+	for _, pragma := range pragmas {
+		if _, err := db.Exec(pragma); err != nil {
+			return fmt.Errorf("%s: %w", pragma, err)
+		}
+	}
+
+	// SQLite works best with a single connection for writes
+	db.SetMaxOpenConns(1)
+
+	return nil
 }
 
 // NewWithDB creates a Store from an existing database connection.
@@ -72,6 +103,17 @@ func CloseDB(db *sql.DB) {
 	if err := db.Close(); err != nil {
 		// Use fmt to stderr since log package may not be initialized
 		fmt.Fprintf(os.Stderr, "store: close database: %v\n", err)
+	}
+}
+
+// closeRows closes a rows iterator and logs any errors.
+// Intended for use in defer statements where errors would otherwise be ignored.
+func closeRows(rows *sql.Rows) {
+	if rows == nil {
+		return
+	}
+	if err := rows.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "store: close rows: %v\n", err)
 	}
 }
 
@@ -173,7 +215,7 @@ func (s *Store) List(filter domain.EventFilter) ([]domain.RepoEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var out []domain.RepoEvent
 
@@ -210,6 +252,9 @@ func (s *Store) UpdateStatus(ids []int64, status domain.EventStatus) error {
 	query := fmt.Sprintf("UPDATE repo_events SET status_id = ? WHERE id IN (%s)", placeholders)
 
 	_, err := s.db.Exec(query, args...)
+	if err != nil {
+		log.Error("store: update status failed: %v (count=%d)", err, len(ids))
+	}
 	return err
 }
 
@@ -247,7 +292,7 @@ func (s *Store) ListSince(id int64) ([]domain.RepoEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var out []domain.RepoEvent
 
@@ -356,7 +401,7 @@ func (s *Store) ListDistinctRepos() ([]domain.RepoID, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var repos []domain.RepoID
 	for rows.Next() {

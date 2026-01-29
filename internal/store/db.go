@@ -42,6 +42,15 @@ func Open(path string) (*sql.DB, error) {
 			return
 		}
 
+		if err = configureSQLite(conn); err != nil {
+			_ = conn.Close()
+			singletonMu.Lock()
+			openError = err
+			singletonMu.Unlock()
+			log.Error("store: failed to configure database: %v", err)
+			return
+		}
+
 		setDBPermissions(path)
 
 		if err = migrations.Run(conn); err != nil {

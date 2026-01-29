@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/footprint-tools/cli/internal/log"
 )
 
 //go:embed sql/*.sql
@@ -125,7 +127,7 @@ func Run(db *sql.DB) error {
 	return nil
 }
 
-func apply(db *sql.DB, m Migration) error {
+func apply(db *sql.DB, m Migration) (retErr error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -136,9 +138,15 @@ func apply(db *sql.DB, m Migration) error {
 	defer func() {
 		if !committed {
 			if rbErr := tx.Rollback(); rbErr != nil {
-				// Log rollback error but don't override the original error
-				// This is a best-effort cleanup
-				_ = rbErr // Rollback failed, but we're already returning an error
+				// Rollback failure is critical - database may be in inconsistent state
+				log.Error("migrations: rollback failed for migration %d: %v (original error: %v)",
+					m.Version, rbErr, retErr)
+				// Return compound error so caller knows rollback also failed
+				if retErr != nil {
+					retErr = fmt.Errorf("%w (additionally, rollback failed: %v)", retErr, rbErr)
+				} else {
+					retErr = fmt.Errorf("rollback failed: %w", rbErr)
+				}
 			}
 		}
 	}()
