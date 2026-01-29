@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/footprint-tools/cli/internal/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/footprint-tools/cli/internal/ui/components"
+	"github.com/footprint-tools/cli/internal/ui/style"
 )
 
 const (
@@ -59,23 +60,23 @@ type logsModel struct {
 	lines []LogLine
 
 	// Stats
-	sessionStart  time.Time
-	totalEver     int            // Total lines in file (all time)
-	sessionLines  int            // Lines received during this session
-	byLevel       map[string]int // Counts by log level (session only)
-	byLevelTotal  map[string]int // Counts by log level (all time)
+	sessionStart time.Time
+	totalEver    int            // Total lines in file (all time)
+	sessionLines int            // Lines received during this session
+	byLevel      map[string]int // Counts by log level (session only)
+	byLevelTotal map[string]int // Counts by log level (all time)
 
 	// UI dimensions
 	width  int
 	height int
 
 	// State
-	paused      bool
-	autoScroll  bool
-	cursor      int
-	scrollPos   int
-	filterQuery string
-	filterLevel string // Filter by level: "", "ERROR", "WARN", "INFO", "DEBUG"
+	paused       bool
+	autoScroll   bool
+	cursor       int
+	logsViewport components.ThemedViewport
+	filterQuery  string
+	filterLevel  string // Filter by level: "", "ERROR", "WARN", "INFO", "DEBUG"
 
 	// Drawer
 	drawerOpen   bool
@@ -94,6 +95,7 @@ func newLogsModel(logPath string) logsModel {
 		byLevelTotal: make(map[string]int),
 		autoScroll:   true,
 		colors:       style.GetColors(),
+		logsViewport: components.NewThemedViewport(80, 20),
 	}
 }
 
@@ -173,8 +175,7 @@ func (m logsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m logsModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// If drawer is open, handle drawer-specific keys
 	if m.drawerOpen {
-		switch msg.Type {
-		case tea.KeyEsc:
+		if msg.Type == tea.KeyEsc {
 			m.drawerOpen = false
 			m.drawerDetail = nil
 			return m, nil
@@ -266,7 +267,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "g":
 		m.cursor = 0
-		m.scrollPos = 0
+		m.logsViewport.GotoTop()
 		m.autoScroll = false
 		return m, nil
 	case "G":
@@ -288,7 +289,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filterLevel = "ERROR"
 		}
 		m.cursor = 0
-		m.scrollPos = 0
+		m.logsViewport.GotoTop()
 		return m, nil
 	case "w":
 		// Filter by WARN
@@ -298,7 +299,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filterLevel = "WARN"
 		}
 		m.cursor = 0
-		m.scrollPos = 0
+		m.logsViewport.GotoTop()
 		return m, nil
 	case "i":
 		// Filter by INFO
@@ -308,7 +309,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filterLevel = "INFO"
 		}
 		m.cursor = 0
-		m.scrollPos = 0
+		m.logsViewport.GotoTop()
 		return m, nil
 	case "d":
 		// Filter by DEBUG
@@ -318,7 +319,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filterLevel = "DEBUG"
 		}
 		m.cursor = 0
-		m.scrollPos = 0
+		m.logsViewport.GotoTop()
 		return m, nil
 	case "a":
 		// Toggle auto-scroll
@@ -332,7 +333,7 @@ func (m logsModel) handleRunes(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(key) == 1 && key[0] >= 32 && key[0] < 127 {
 			m.filterQuery += key
 			m.cursor = 0
-			m.scrollPos = 0
+			m.logsViewport.GotoTop()
 		}
 	}
 
@@ -364,7 +365,7 @@ func (m logsModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			footerHeight := 2
 			if msg.Y >= headerHeight && msg.Y < m.height-footerHeight {
 				clickedLine := msg.Y - headerHeight
-				clickedIdx := m.scrollPos + clickedLine
+				clickedIdx := m.logsViewport.YOffset() + clickedLine
 				filtered := m.filteredLines()
 				if clickedIdx >= 0 && clickedIdx < len(filtered) {
 					m.cursor = clickedIdx

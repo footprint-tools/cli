@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/footprint-tools/cli/internal/git"
 	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/components"
 	"github.com/footprint-tools/cli/internal/ui/style"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -68,13 +69,13 @@ type watchModel struct {
 	filterRepo   string       // "" means no filter
 
 	// Focus: 0=events, 1=sidebar, 2=drawer
-	focusedPanel  int
-	sidebarScroll int
+	focusedPanel    int
+	sidebarViewport components.ThemedViewport
 
 	// Drawer
-	drawerOpen   bool
-	drawerDetail *EventDetail
-	drawerScroll int
+	drawerOpen     bool
+	drawerDetail   *EventDetail
+	drawerViewport components.ThemedViewport
 
 	// Styling
 	colors style.ColorConfig
@@ -82,15 +83,17 @@ type watchModel struct {
 
 func newWatchModel(db *sql.DB, lastID int64) watchModel {
 	return watchModel{
-		db:           db,
-		lastID:       lastID,
-		events:       make([]store.RepoEvent, 0, maxEvents),
-		commitMeta:   make(map[string]git.CommitMetadata),
-		sessionStart: time.Now(),
-		byType:       make(map[string]int),
-		byRepo:       make(map[string]int),
-		filterSource: -1, // No filter
-		colors:       style.GetColors(),
+		db:              db,
+		lastID:          lastID,
+		events:          make([]store.RepoEvent, 0, maxEvents),
+		commitMeta:      make(map[string]git.CommitMetadata),
+		sessionStart:    time.Now(),
+		byType:          make(map[string]int),
+		byRepo:          make(map[string]int),
+		filterSource:    -1, // No filter
+		colors:          style.GetColors(),
+		sidebarViewport: components.NewThemedViewport(20, 20),
+		drawerViewport:  components.NewThemedViewport(40, 20),
 	}
 }
 
@@ -191,26 +194,20 @@ func (m watchModel) handleDrawerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEsc:
 		m.drawerOpen = false
 		m.drawerDetail = nil
-		m.drawerScroll = 0
+		m.drawerViewport.GotoTop()
 		m.focusedPanel = 0
 		return m, nil
 	case tea.KeyUp:
-		m.drawerScroll--
-		if m.drawerScroll < 0 {
-			m.drawerScroll = 0
-		}
+		m.drawerViewport.LineUp(1)
 		return m, nil
 	case tea.KeyDown:
-		m.drawerScroll++
+		m.drawerViewport.LineDown(1)
 		return m, nil
 	case tea.KeyPgUp:
-		m.drawerScroll -= 10
-		if m.drawerScroll < 0 {
-			m.drawerScroll = 0
-		}
+		m.drawerViewport.LineUp(10)
 		return m, nil
 	case tea.KeyPgDown:
-		m.drawerScroll += 10
+		m.drawerViewport.LineDown(10)
 		return m, nil
 	}
 
@@ -218,23 +215,20 @@ func (m watchModel) handleDrawerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		m.drawerOpen = false
 		m.drawerDetail = nil
-		m.drawerScroll = 0
+		m.drawerViewport.GotoTop()
 		m.focusedPanel = 0
 		return m, nil
 	case "j":
-		m.drawerScroll++
+		m.drawerViewport.LineDown(1)
 		return m, nil
 	case "k":
-		m.drawerScroll--
-		if m.drawerScroll < 0 {
-			m.drawerScroll = 0
-		}
+		m.drawerViewport.LineUp(1)
 		return m, nil
 	case "g":
-		m.drawerScroll = 0
+		m.drawerViewport.GotoTop()
 		return m, nil
 	case "G":
-		m.drawerScroll = 999
+		m.drawerViewport.GotoBottom()
 		return m, nil
 	}
 	return m, nil
@@ -252,13 +246,10 @@ func (m watchModel) handleSidebarKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusedPanel = 0
 		return m, nil
 	case tea.KeyUp:
-		m.sidebarScroll--
-		if m.sidebarScroll < 0 {
-			m.sidebarScroll = 0
-		}
+		m.sidebarViewport.LineUp(1)
 		return m, nil
 	case tea.KeyDown:
-		m.sidebarScroll++
+		m.sidebarViewport.LineDown(1)
 		return m, nil
 	}
 
@@ -266,13 +257,10 @@ func (m watchModel) handleSidebarKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "j":
-		m.sidebarScroll++
+		m.sidebarViewport.LineDown(1)
 		return m, nil
 	case "k":
-		m.sidebarScroll--
-		if m.sidebarScroll < 0 {
-			m.sidebarScroll = 0
-		}
+		m.sidebarViewport.LineUp(1)
 		return m, nil
 	case "c":
 		m.filterSource = -1
@@ -294,7 +282,7 @@ func (m watchModel) handleEventsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.drawerOpen {
 			m.drawerOpen = false
 			m.drawerDetail = nil
-			m.drawerScroll = 0
+			m.drawerViewport.GotoTop()
 			return m, nil
 		}
 		return m, tea.Quit
@@ -409,10 +397,11 @@ func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 
 		// Determine which panel was clicked and set focus
-		if msg.X < statsWidth {
+		switch {
+		case msg.X < statsWidth:
 			// Click in sidebar
 			m.focusedPanel = 1
-		} else if msg.X < drawerStart {
+		case msg.X < drawerStart:
 			// Click in events area
 			m.focusedPanel = 0
 			headerHeight := 3
@@ -425,41 +414,36 @@ func (m watchModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 					m.cursor = clickedIdx
 				}
 			}
-		} else if m.drawerOpen {
+		case m.drawerOpen:
 			// Click in drawer
 			m.focusedPanel = 2
 		}
 
 	case tea.MouseButtonWheelUp:
 		// Scroll based on mouse position
-		if msg.X < statsWidth {
-			m.sidebarScroll--
-			if m.sidebarScroll < 0 {
-				m.sidebarScroll = 0
-			}
-		} else if msg.X < drawerStart {
+		switch {
+		case msg.X < statsWidth:
+			m.sidebarViewport.LineUp(1)
+		case msg.X < drawerStart:
 			m.moveCursor(-1)
-		} else if m.drawerOpen {
-			m.drawerScroll--
-			if m.drawerScroll < 0 {
-				m.drawerScroll = 0
-			}
+		case m.drawerOpen:
+			m.drawerViewport.LineUp(1)
 		}
 
 	case tea.MouseButtonWheelDown:
 		// Scroll based on mouse position
-		if msg.X < statsWidth {
-			m.sidebarScroll++
-		} else if msg.X < drawerStart {
+		switch {
+		case msg.X < statsWidth:
+			m.sidebarViewport.LineDown(1)
+		case msg.X < drawerStart:
 			m.moveCursor(1)
-		} else if m.drawerOpen {
-			m.drawerScroll++
+		case m.drawerOpen:
+			m.drawerViewport.LineDown(1)
 		}
 	}
 
 	return m, nil
 }
-
 
 func (m *watchModel) moveCursor(delta int) {
 	filtered := m.filteredEvents()
@@ -475,7 +459,6 @@ func (m *watchModel) moveCursor(delta int) {
 		m.cursor = len(filtered) - 1
 	}
 }
-
 
 func (m watchModel) pollEvents() tea.Cmd {
 	return func() tea.Msg {
@@ -627,4 +610,3 @@ func (m watchModel) getCommitMeta(repoPath, commit string) git.CommitMetadata {
 	meta := git.GetCommitMetadata(repoPath, commit)
 	return meta
 }
-

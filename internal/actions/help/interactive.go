@@ -7,12 +7,12 @@ import (
 	"sort"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/help"
 	"github.com/footprint-tools/cli/internal/ui/splitpanel"
 	"github.com/footprint-tools/cli/internal/ui/style"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
 )
 
@@ -85,21 +85,21 @@ type sidebarItem struct {
 //
 
 type model struct {
-	allItems       []sidebarItem // Original unfiltered items
-	items          []sidebarItem // Filtered items to display
-	cursor         int
-	sidebarScroll  int
-	contentScroll  int
-	width          int
-	height         int
-	sidebarWidth   int  // Calculated sidebar width for mouse detection
-	headerHeight   int  // Header height for mouse detection
-	cancelled      bool
-	colors         style.ColorConfig
-	focusSidebar   bool   // true = sidebar focused, false = content focused
-	searchMode     bool   // true = search input active
-	searchQuery    string // Current search query
-	totalCommands  int    // Total selectable items count
+	allItems      []sidebarItem // Original unfiltered items
+	items         []sidebarItem // Filtered items to display
+	cursor        int
+	sidebarScroll int
+	contentScroll int
+	width         int
+	height        int
+	sidebarWidth  int // Calculated sidebar width for mouse detection
+	headerHeight  int // Header height for mouse detection
+	cancelled     bool
+	colors        style.ColorConfig
+	focusSidebar  bool   // true = sidebar focused, false = content focused
+	searchMode    bool   // true = search input active
+	searchQuery   string // Current search query
+	totalCommands int    // Total selectable items count
 }
 
 func countSelectableItems(items []sidebarItem) int {
@@ -678,7 +678,7 @@ func (m model) renderHeader(width int) string {
 	return headerStyle.Render(headerContent)
 }
 
-func (m *model) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *model) buildSidebarPanel(_ *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
@@ -764,7 +764,6 @@ func (m *model) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpa
 		TotalItems: len(m.items),
 	}
 }
-
 
 func (m *model) buildContentPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	mutedColor := lipgloss.Color(m.colors.Muted)
@@ -1118,11 +1117,12 @@ func wrapText(text string, width int) string {
 		words := strings.Fields(line)
 		current := ""
 		for _, word := range words {
-			if current == "" {
+			switch {
+			case current == "":
 				current = word
-			} else if len(current)+1+len(word) <= width {
+			case len(current)+1+len(word) <= width:
 				current += " " + word
-			} else {
+			default:
 				result.WriteString(current)
 				result.WriteString("\n")
 				current = word

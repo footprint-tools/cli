@@ -6,11 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/footprint-tools/cli/internal/dispatchers"
-	"github.com/footprint-tools/cli/internal/ui/splitpanel"
-	"github.com/footprint-tools/cli/internal/ui/style"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/ui/components"
+	"github.com/footprint-tools/cli/internal/ui/splitpanel"
+	"github.com/footprint-tools/cli/internal/ui/style"
 	"golang.org/x/term"
 )
 
@@ -333,35 +335,23 @@ func (m model) renderHeader() string {
 }
 
 func (m model) renderFooter() string {
-	// Get current theme config for styling
-	currentCfg := m.configs[m.themes[m.cursor]]
-	infoColor := lipgloss.Color(currentCfg.Info)
-	mutedColor := lipgloss.Color(currentCfg.Muted)
-	borderColor := lipgloss.Color(currentCfg.UIDim)
+	help := components.NewThemedHelp()
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-		Background(infoColor).
-		Padding(0, 1)
-
-	sepStyle := lipgloss.NewStyle().Foreground(borderColor)
-	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
-
-	sep := sepStyle.Render(" | ")
-
-	footer := keyStyle.Render("Tab") + labelStyle.Render(" switch") + sep +
-		keyStyle.Render("jk") + labelStyle.Render(" nav") + sep +
-		keyStyle.Render("Enter") + labelStyle.Render(" select") + sep +
-		keyStyle.Render("q") + labelStyle.Render(" quit")
+	bindings := []key.Binding{
+		key.NewBinding(key.WithKeys("tab"), key.WithHelp("Tab", "switch")),
+		key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("jk", "nav")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("Enter", "select")),
+		key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	}
 
 	footerStyle := lipgloss.NewStyle().
 		Width(m.width).
 		Padding(0, 1)
 
-	return footerStyle.Render(footer)
+	return footerStyle.Render(help.ShortHelpView(bindings))
 }
 
-func (m *model) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *model) buildSidebarPanel(_ *splitpanel.Layout, height int) splitpanel.Panel {
 	// Get current theme config for styling
 	currentCfg := m.configs[m.themes[m.cursor]]
 	mutedColor := lipgloss.Color(currentCfg.Muted)
@@ -428,7 +418,6 @@ func (m *model) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpa
 	}
 }
 
-
 func (m *model) buildPreviewPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	// Get current theme
 	themeName := m.themes[m.cursor]
@@ -468,7 +457,7 @@ func (m *model) buildPreviewPanel(layout *splitpanel.Layout, height int) splitpa
 }
 
 // buildDetailedPreview creates a detailed preview with UI examples
-func buildDetailedPreview(name string, cfg style.ColorConfig, width int) string {
+func buildDetailedPreview(name string, cfg style.ColorConfig, _ int) string {
 	// Color helpers
 	colorize := func(text, color string) string {
 		if color == "" || color == "bold" {
@@ -651,7 +640,7 @@ func buildThemeDetailsLines(name string, cfg style.ColorConfig) []string {
 		return s.Render(label)
 	}
 
-	var lines []string
+	lines := make([]string, 0, 15)
 
 	lines = append(
 		lines,

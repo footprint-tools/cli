@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/footprint-tools/cli/internal/format"
 	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/components"
 	"github.com/footprint-tools/cli/internal/ui/splitpanel"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // View implements tea.Model
@@ -63,10 +65,12 @@ func (m watchModel) renderHeader() string {
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
 	warnColor := lipgloss.Color(colors.Warning)
+	uiActiveColor := lipgloss.Color(colors.UIActive)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(infoColor)
 	mutedStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	warnStyle := lipgloss.NewStyle().Foreground(warnColor)
+	activeStyle := lipgloss.NewStyle().Foreground(uiActiveColor)
 
 	// Title
 	title := titleStyle.Render("footprint watch")
@@ -93,9 +97,18 @@ func (m watchModel) renderHeader() string {
 		filterStr += mutedStyle.Render(" | Search: ") + mutedStyle.Render(m.filterQuery)
 	}
 
+	// Position indicator
+	positionStr := ""
+	filtered := m.filteredEvents()
+	if len(filtered) > 0 {
+		current := m.cursor + 1
+		total := len(filtered)
+		positionStr = mutedStyle.Render(" | ") + activeStyle.Render(fmt.Sprintf("%d", current)) + mutedStyle.Render("/") + mutedStyle.Render(fmt.Sprintf("%d", total))
+	}
+
 	headerContent := title + mutedStyle.Render(" | ") +
 		mutedStyle.Render("Session: ") + timeStr +
-		status + filterStr
+		status + filterStr + positionStr
 
 	headerStyle := lipgloss.NewStyle().
 		Width(m.width).
@@ -103,7 +116,6 @@ func (m watchModel) renderHeader() string {
 
 	return headerStyle.Render(headerContent)
 }
-
 
 func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
 	colors := m.colors
@@ -173,7 +185,7 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 			name  string
 			count int
 		}
-		var repos []repoCount
+		repos := make([]repoCount, 0, len(m.byRepo))
 		for name, count := range m.byRepo {
 			repos = append(repos, repoCount{name, count})
 		}
@@ -186,7 +198,7 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 
 		// Show top repos - name and count on same line
 		width := layout.SidebarContentWidth()
-		maxRepos := max((height-12), 3) // 1 line per repo now
+		maxRepos := max((height - 12), 3) // 1 line per repo now
 		maxRepos = min(maxRepos, len(repos))
 
 		for i := 0; i < maxRepos; i++ {
@@ -201,29 +213,23 @@ func (m *watchModel) buildStatsPanel(layout *splitpanel.Layout, height int) spli
 		}
 	}
 
-	// Handle scrolling
+	// Set content and dimensions on viewport
 	totalLines := len(lines)
 	visibleHeight := height - 2
 	if visibleHeight < 1 {
 		visibleHeight = 1
 	}
-	scrollPos := m.sidebarScroll
-	maxScroll := totalLines - visibleHeight
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-	if scrollPos > maxScroll {
-		scrollPos = maxScroll
-	}
+	contentWidth := layout.SidebarContentWidth()
+	m.sidebarViewport.SetSize(contentWidth, visibleHeight)
+	m.sidebarViewport.SetContent(strings.Join(lines, "\n"))
 
-	// Slice to visible lines
-	endIdx := scrollPos + visibleHeight
-	if endIdx > totalLines {
-		endIdx = totalLines
-	}
+	// Get visible lines from viewport
+	scrollPos := m.sidebarViewport.YOffset()
+	endIdx := min(scrollPos+visibleHeight, totalLines)
+	startIdx := min(scrollPos, totalLines)
 	visibleLines := lines
-	if scrollPos < totalLines {
-		visibleLines = lines[scrollPos:endIdx]
+	if startIdx < totalLines {
+		visibleLines = lines[startIdx:endIdx]
 	}
 
 	return splitpanel.Panel{
@@ -303,14 +309,14 @@ func (m watchModel) formatEventLine(event store.RepoEvent, width int, selected b
 
 	// Column definitions (predefined widths)
 	const (
-		colTime    = 5  // "15:04"
-		colSource  = 13 // "POST-CHECKOUT"
-		colRepo    = 12 // repo name
-		colBranch  = 12 // branch name
-		colCommit  = 7  // short hash
-		colAdd     = 6  // "+1234"
-		colDel     = 6  // "-1234"
-		colFiles   = 4  // "12F"
+		colTime   = 5  // "15:04"
+		colSource = 13 // "POST-CHECKOUT"
+		colRepo   = 12 // repo name
+		colBranch = 12 // branch name
+		colCommit = 7  // short hash
+		colAdd    = 6  // "+1234"
+		colDel    = 6  // "-1234"
+		colFiles  = 4  // "12F"
 	)
 
 	// Source type (full name) and color
@@ -611,7 +617,7 @@ func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		addClickable("Path:    ", event.RepoPath)
 
 		// ID (clickable)
-		addClickable("ID:      ", string(event.RepoID))
+		addClickable("ID:      ", event.RepoID)
 
 		// Timestamps
 		if meta.AuthoredAt != "" {
@@ -652,27 +658,24 @@ func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		}
 	}
 
-	// Clamp scroll position and slice visible lines
+	// Set content and dimensions on viewport
 	visibleHeight := height - 2
 	if visibleHeight < 1 {
 		visibleHeight = 1
 	}
 	totalLines := len(lines)
-	scrollPos := m.drawerScroll
-	maxScroll := totalLines - visibleHeight
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-	if scrollPos > maxScroll {
-		scrollPos = maxScroll
-	}
+	contentWidth := layout.DrawerContentWidth()
+	m.drawerViewport.SetSize(contentWidth, visibleHeight)
+	m.drawerViewport.SetContent(strings.Join(lines, "\n"))
 
-	// Slice to visible lines only
-	endIdx := scrollPos + visibleHeight
-	if endIdx > totalLines {
-		endIdx = totalLines
+	// Get visible lines from viewport
+	scrollPos := m.drawerViewport.YOffset()
+	endIdx := min(scrollPos+visibleHeight, totalLines)
+	startIdx := min(scrollPos, totalLines)
+	visibleLines := lines
+	if startIdx < totalLines {
+		visibleLines = lines[startIdx:endIdx]
 	}
-	visibleLines := lines[scrollPos:endIdx]
 
 	return splitpanel.Panel{
 		Lines:      visibleLines,
@@ -682,53 +685,48 @@ func (m *watchModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 }
 
 func (m watchModel) renderFooter() string {
-	colors := m.colors
-	infoColor := lipgloss.Color(colors.Info)
-	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
+	help := components.NewThemedHelp()
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-		Background(infoColor).
-		Padding(0, 1)
+	var bindings []key.Binding
 
-	sepStyle := lipgloss.NewStyle().Foreground(borderColor)
-	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
+	tabBinding := key.NewBinding(key.WithKeys("tab"), key.WithHelp("Tab", "focus"))
 
-	sep := sepStyle.Render(" | ")
-
-	var footer string
-	tabHint := keyStyle.Render("Tab") + labelStyle.Render(" focus") + sep
-
-	if m.focusedPanel == 2 && m.drawerOpen {
+	switch {
+	case m.focusedPanel == 2 && m.drawerOpen:
 		// Drawer focused
-		footer = tabHint +
-			keyStyle.Render("Esc") + labelStyle.Render(" close") + sep +
-			keyStyle.Render("j/↓") + labelStyle.Render(" down") + sep +
-			keyStyle.Render("k/↑") + labelStyle.Render(" up") + sep +
-			keyStyle.Render("g") + labelStyle.Render(" top") + sep +
-			keyStyle.Render("G") + labelStyle.Render(" bottom")
-	} else if m.focusedPanel == 1 {
+		bindings = []key.Binding{
+			tabBinding,
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("Esc", "close")),
+			key.NewBinding(key.WithKeys("j", "down"), key.WithHelp("j/↓", "down")),
+			key.NewBinding(key.WithKeys("k", "up"), key.WithHelp("k/↑", "up")),
+			key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "top")),
+			key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "bottom")),
+		}
+	case m.focusedPanel == 1:
 		// Sidebar focused
-		footer = tabHint +
-			keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
-			keyStyle.Render("j/↓") + labelStyle.Render(" scroll") + sep +
-			keyStyle.Render("1-7") + labelStyle.Render(" filter") + sep +
-			keyStyle.Render("c") + labelStyle.Render(" clear")
-	} else {
+		bindings = []key.Binding{
+			tabBinding,
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("j", "down"), key.WithHelp("j/↓", "scroll")),
+			key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6", "7"), key.WithHelp("1-7", "filter")),
+			key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clear")),
+		}
+	default:
 		// Events focused
-		footer = tabHint +
-			keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
-			keyStyle.Render("p") + labelStyle.Render(" pause") + sep +
-			keyStyle.Render("j/↓") + labelStyle.Render(" ") + keyStyle.Render("k/↑") + sep +
-			keyStyle.Render("Enter") + labelStyle.Render(" detail") + sep +
-			keyStyle.Render("1-7") + labelStyle.Render(" source") + sep +
-			keyStyle.Render("c") + labelStyle.Render(" clear")
+		bindings = []key.Binding{
+			tabBinding,
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause")),
+			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("jk", "nav")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("Enter", "detail")),
+			key.NewBinding(key.WithKeys("1", "2", "3", "4", "5", "6", "7"), key.WithHelp("1-7", "source")),
+			key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clear")),
+		}
 	}
 
 	footerStyle := lipgloss.NewStyle().
 		Width(m.width).
 		Padding(0, 1)
 
-	return footerStyle.Render(footer)
+	return footerStyle.Render(help.ShortHelpView(bindings))
 }

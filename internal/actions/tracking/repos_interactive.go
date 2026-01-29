@@ -9,12 +9,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/git"
 	"github.com/footprint-tools/cli/internal/hooks"
 	"github.com/footprint-tools/cli/internal/store"
+	"github.com/footprint-tools/cli/internal/ui/components"
 	"github.com/footprint-tools/cli/internal/ui/splitpanel"
 	"github.com/footprint-tools/cli/internal/ui/style"
 	"golang.org/x/term"
@@ -31,7 +33,11 @@ type RepoEntry struct {
 }
 
 // ReposInteractive launches the interactive repository manager.
-func ReposInteractive(_ []string, flags *dispatchers.ParsedFlags) error {
+func ReposInteractive(args []string, flags *dispatchers.ParsedFlags) error {
+	return reposInteractive(args, flags, DefaultDeps())
+}
+
+func reposInteractive(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 		return errors.New("interactive mode requires a terminal")
 	}
@@ -50,18 +56,18 @@ func ReposInteractive(_ []string, flags *dispatchers.ParsedFlags) error {
 	maxDepth := flags.Int("--depth", 25)
 
 	// Scan for repos
-	fmt.Printf("Scanning for git repositories in %s...\n", root)
+	_, _ = deps.Printf("Scanning for git repositories in %s...\n", root)
 	repos, err := scanForRepos(root, maxDepth)
 	if err != nil {
 		return err
 	}
 
 	if len(repos) == 0 {
-		fmt.Println("No git repositories found")
+		_, _ = deps.Println("No git repositories found")
 		return nil
 	}
 
-	fmt.Printf("Found %d repositories\n", len(repos))
+	_, _ = deps.Printf("Found %d repositories\n", len(repos))
 
 	// Launch TUI
 	m := newReposModel(repos)
@@ -76,12 +82,12 @@ func ReposInteractive(_ []string, flags *dispatchers.ParsedFlags) error {
 
 	// Show summary of changes
 	if fm.installed > 0 || fm.uninstalled > 0 {
-		fmt.Println()
+		_, _ = deps.Println()
 		if fm.installed > 0 {
-			fmt.Printf("Installed hooks in %d repositories\n", fm.installed)
+			_, _ = deps.Printf("Installed hooks in %d repositories\n", fm.installed)
 		}
 		if fm.uninstalled > 0 {
-			fmt.Printf("Removed hooks from %d repositories\n", fm.uninstalled)
+			_, _ = deps.Printf("Removed hooks from %d repositories\n", fm.uninstalled)
 		}
 	}
 
@@ -96,37 +102,37 @@ func scanForRepos(root string, maxDepth int) ([]RepoEntry, error) {
 	// Directories to skip (optimization)
 	skipDirs := map[string]bool{
 		// Package managers / dependencies
-		"node_modules": true,
-		"vendor":       true,
+		"node_modules":     true,
+		"vendor":           true,
 		"bower_components": true,
-		"jspm_packages": true,
-		".pnpm":        true,
+		"jspm_packages":    true,
+		".pnpm":            true,
 		// Python
-		"__pycache__":  true,
-		".venv":        true,
-		"venv":         true,
-		"env":          true,
-		".eggs":        true,
+		"__pycache__":   true,
+		".venv":         true,
+		"venv":          true,
+		"env":           true,
+		".eggs":         true,
 		"site-packages": true,
 		// Build outputs
-		"dist":         true,
-		"build":        true,
-		"target":       true,
-		"out":          true,
-		"_build":       true,
+		"dist":   true,
+		"build":  true,
+		"target": true,
+		"out":    true,
+		"_build": true,
 		// IDE / tools
-		".idea":        true,
-		".vscode":      true,
+		".idea":   true,
+		".vscode": true,
 		// System / caches
-		".cache":       true,
-		".npm":         true,
-		".yarn":        true,
+		".cache": true,
+		".npm":   true,
+		".yarn":  true,
 		// macOS
 		"Library":      true,
 		".Trash":       true,
 		"Applications": true,
 		// Git internals (don't descend)
-		".git":         true,
+		".git": true,
 	}
 
 	rootDepth := strings.Count(root, string(os.PathSeparator))
@@ -186,26 +192,28 @@ func scanForRepos(root string, maxDepth int) ([]RepoEntry, error) {
 
 // reposModel is the Bubble Tea model for the interactive repos view.
 type reposModel struct {
-	repos        []RepoEntry
-	cursor       int
-	scroll       int
-	width        int
-	height       int
-	installed    int
-	uninstalled  int
-	message      string
-	colors       style.ColorConfig
-	focusSidebar bool
-	drawerOpen   bool // Whether the details drawer is open
-	drawerScroll int  // Scroll position within the drawer
+	repos          []RepoEntry
+	cursor         int
+	reposViewport  components.ThemedViewport
+	width          int
+	height         int
+	installed      int
+	uninstalled    int
+	message        string
+	colors         style.ColorConfig
+	focusSidebar   bool
+	drawerOpen     bool // Whether the details drawer is open
+	drawerViewport components.ThemedViewport
 }
 
 func newReposModel(repos []RepoEntry) reposModel {
 	return reposModel{
-		repos:        repos,
-		cursor:       0,
-		colors:       style.GetColors(),
-		focusSidebar: false, // Start with focus on repo list
+		repos:          repos,
+		cursor:         0,
+		colors:         style.GetColors(),
+		focusSidebar:   false, // Start with focus on repo list
+		reposViewport:  components.NewThemedViewport(60, 20),
+		drawerViewport: components.NewThemedViewport(40, 20),
 	}
 }
 
@@ -228,48 +236,41 @@ func (m reposModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case tea.KeyEsc, tea.KeyEnter:
 				m.drawerOpen = false
-				m.drawerScroll = 0
+				m.drawerViewport.GotoTop()
 				return m, nil
 			case tea.KeyUp:
-				if m.drawerScroll > 0 {
-					m.drawerScroll--
-				}
+				m.drawerViewport.LineUp(1)
 				return m, nil
 			case tea.KeyDown:
-				m.drawerScroll++
+				m.drawerViewport.LineDown(1)
 				return m, nil
 			case tea.KeyPgUp:
-				m.drawerScroll -= 5
-				if m.drawerScroll < 0 {
-					m.drawerScroll = 0
-				}
+				m.drawerViewport.LineUp(5)
 				return m, nil
 			case tea.KeyPgDown:
-				m.drawerScroll += 5
+				m.drawerViewport.LineDown(5)
 				return m, nil
 			case tea.KeyHome:
-				m.drawerScroll = 0
+				m.drawerViewport.GotoTop()
 				return m, nil
 			case tea.KeyRunes:
 				switch string(msg.Runes) {
 				case "q":
 					m.drawerOpen = false
-					m.drawerScroll = 0
+					m.drawerViewport.GotoTop()
 					return m, nil
 				case "j":
-					m.drawerScroll++
+					m.drawerViewport.LineDown(1)
 					return m, nil
 				case "k":
-					if m.drawerScroll > 0 {
-						m.drawerScroll--
-					}
+					m.drawerViewport.LineUp(1)
 					return m, nil
 				case "g":
-					m.drawerScroll = 0
+					m.drawerViewport.GotoTop()
 					return m, nil
 				case "?":
 					m.drawerOpen = false
-					m.drawerScroll = 0
+					m.drawerViewport.GotoTop()
 					return m, nil
 				}
 			}
@@ -365,7 +366,7 @@ func (m reposModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Open drawer for any repo (d = details)
 				if len(m.repos) > 0 {
 					m.drawerOpen = true
-					m.drawerScroll = 0
+					m.drawerViewport.GotoTop()
 				}
 			}
 		}
@@ -531,11 +532,12 @@ func (m reposModel) View() string {
 	layout.SetDrawerOpen(m.drawerOpen)
 
 	// Set focus: drawer (2) > sidebar (1) > content (0)
-	if m.drawerOpen {
+	switch {
+	case m.drawerOpen:
 		layout.SetFocusedPanel(2)
-	} else if m.focusSidebar {
+	case m.focusSidebar:
 		layout.SetFocusedPanel(1)
-	} else {
+	default:
 		layout.SetFocusedPanel(0)
 	}
 
@@ -587,7 +589,8 @@ func (m *reposModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 	lines = append(lines, "")
 
 	// Status section based on repo state
-	if repo.HasHooks {
+	switch {
+	case repo.HasHooks:
 		// Installed repo
 		lines = append(lines, successStyle.Render("Tracking active"))
 		lines = append(lines, "")
@@ -597,7 +600,7 @@ func (m *reposModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		lines = append(lines, headerStyle.Render("ACTIONS"))
 		lines = append(lines, "")
 		lines = append(lines, labelStyle.Render("Select and press ")+valueStyle.Render("u")+labelStyle.Render(" to remove"))
-	} else if repo.Inspection.Status.CanInstall() {
+	case repo.Inspection.Status.CanInstall():
 		// Ready to install
 		lines = append(lines, valueStyle.Render("Ready to track"))
 		lines = append(lines, "")
@@ -607,7 +610,7 @@ func (m *reposModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		lines = append(lines, headerStyle.Render("ACTIONS"))
 		lines = append(lines, "")
 		lines = append(lines, labelStyle.Render("Select and press ")+valueStyle.Render("i")+labelStyle.Render(" to install"))
-	} else {
+	default:
 		// Blocked - needs setup
 		lines = append(lines, warnStyle.Render("Needs setup"))
 		lines = append(lines, "")
@@ -647,34 +650,28 @@ func (m *reposModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spl
 		}
 	}
 
-	// Calculate visible area and clamp scroll
+	// Set content and dimensions on viewport
 	visibleLines := height - 4
 	if visibleLines < 1 {
 		visibleLines = 1
 	}
 	totalLines := len(lines)
-	maxScroll := totalLines - visibleLines
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
-	if m.drawerScroll > maxScroll {
-		m.drawerScroll = maxScroll
-	}
-	if m.drawerScroll < 0 {
-		m.drawerScroll = 0
-	}
+	contentWidth := layout.DrawerContentWidth()
+	m.drawerViewport.SetSize(contentWidth, visibleLines)
+	m.drawerViewport.SetContent(strings.Join(lines, "\n"))
 
-	// Slice lines to visible portion
-	startLine := m.drawerScroll
-	endLine := startLine + visibleLines
-	if endLine > totalLines {
-		endLine = totalLines
+	// Get visible lines from viewport
+	scrollPos := m.drawerViewport.YOffset()
+	endLine := min(scrollPos+visibleLines, totalLines)
+	startLine := min(scrollPos, totalLines)
+	visibleContent := lines
+	if startLine < totalLines {
+		visibleContent = lines[startLine:endLine]
 	}
-	visibleContent := lines[startLine:endLine]
 
 	return splitpanel.Panel{
 		Lines:      visibleContent,
-		ScrollPos:  m.drawerScroll,
+		ScrollPos:  scrollPos,
 		TotalItems: totalLines,
 	}
 }
@@ -712,13 +709,23 @@ func (m reposModel) renderHeader() string {
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
 	warnColor := lipgloss.Color(colors.Warning)
+	uiActiveColor := lipgloss.Color(colors.UIActive)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(infoColor)
 	mutedStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	warnStyle := lipgloss.NewStyle().Foreground(warnColor)
+	activeStyle := lipgloss.NewStyle().Foreground(uiActiveColor)
 
 	title := titleStyle.Render("fp repos")
 	count := mutedStyle.Render(fmt.Sprintf(" | %d repositories", len(m.repos)))
+
+	// Position indicator
+	positionStr := ""
+	if len(m.repos) > 0 {
+		current := m.cursor + 1
+		total := len(m.repos)
+		positionStr = mutedStyle.Render(" | ") + activeStyle.Render(fmt.Sprintf("%d", current)) + mutedStyle.Render("/") + mutedStyle.Render(fmt.Sprintf("%d", total))
+	}
 
 	// Message if any
 	msgStr := ""
@@ -726,7 +733,7 @@ func (m reposModel) renderHeader() string {
 		msgStr = mutedStyle.Render(" | ") + warnStyle.Render(m.message)
 	}
 
-	headerContent := title + count + msgStr
+	headerContent := title + count + positionStr + msgStr
 
 	headerStyle := lipgloss.NewStyle().
 		Width(m.width).
@@ -735,7 +742,7 @@ func (m reposModel) renderHeader() string {
 	return headerStyle.Render(headerContent)
 }
 
-func (m *reposModel) buildStatsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *reposModel) buildStatsPanel(_ *splitpanel.Layout, _ int) splitpanel.Panel {
 	colors := m.colors
 	headerColor := lipgloss.Color(colors.Header)
 	infoColor := lipgloss.Color(colors.Info)
@@ -836,26 +843,29 @@ func (m *reposModel) buildReposPanel(layout *splitpanel.Layout, height int) spli
 		visibleHeight = 1
 	}
 
+	// Update viewport size
+	contentWidth := layout.MainContentWidth()
+	m.reposViewport.SetSize(contentWidth, visibleHeight)
+
 	// Adjust scroll to keep cursor visible
-	if m.cursor < m.scroll {
-		m.scroll = m.cursor
+	scroll := m.reposViewport.YOffset()
+	if m.cursor < scroll {
+		scroll = m.cursor
+		m.reposViewport.SetYOffset(scroll)
 	}
 	// Each repo takes 3 lines when selected (name, path, status), 1 otherwise
 	effectiveHeight := visibleHeight / 3 // Conservative estimate
-	if m.cursor >= m.scroll+effectiveHeight {
-		m.scroll = m.cursor - effectiveHeight + 1
-	}
-	if m.scroll < 0 {
-		m.scroll = 0
+	if m.cursor >= scroll+effectiveHeight {
+		scroll = m.cursor - effectiveHeight + 1
+		m.reposViewport.SetYOffset(scroll)
 	}
 
 	var lines []string
-	contentWidth := layout.MainContentWidth()
 
 	home, _ := os.UserHomeDir()
 
 	lineCount := 0
-	for i := m.scroll; i < len(m.repos) && lineCount < visibleHeight; i++ {
+	for i := scroll; i < len(m.repos) && lineCount < visibleHeight; i++ {
 		repo := m.repos[i]
 
 		// Build prefix: selected items are less indented to stand out
@@ -871,15 +881,16 @@ func (m *reposModel) buildReposPanel(layout *splitpanel.Layout, height int) spli
 		// Name styling based on state - color + non-color identifier
 		var name string
 		var marker string
-		if repo.HasHooks {
+		switch {
+		case repo.HasHooks:
 			// Installed: green with checkmark
 			name = installedNameStyle.Render(repo.Name)
 			marker = installedNameStyle.Render(" ✓")
-		} else if canInstall {
+		case canInstall:
 			// Ready to install: normal, no marker
 			name = readyNameStyle.Render(repo.Name)
 			marker = ""
-		} else {
+		default:
 			// Blocked: yellow with "!" indicator
 			name = blockedNameStyle.Render(repo.Name)
 			marker = blockedNameStyle.Render(" !")
@@ -902,7 +913,7 @@ func (m *reposModel) buildReposPanel(layout *splitpanel.Layout, height int) spli
 		// Pad line to full width for selection background
 		lineWidth := lipgloss.Width(line)
 		if lineWidth < contentWidth {
-			line = line + strings.Repeat(" ", contentWidth-lineWidth)
+			line += strings.Repeat(" ", contentWidth-lineWidth)
 		} else if lineWidth > contentWidth {
 			line = line[:contentWidth-3] + "..."
 		}
@@ -940,35 +951,36 @@ func (m *reposModel) buildReposPanel(layout *splitpanel.Layout, height int) spli
 
 	return splitpanel.Panel{
 		Lines:      lines,
-		ScrollPos:  m.scroll,
+		ScrollPos:  m.reposViewport.YOffset(),
 		TotalItems: len(m.repos),
 	}
 }
 
 func (m reposModel) renderFooter() string {
-	colors := m.colors
-	infoColor := lipgloss.Color(colors.Info)
-	mutedColor := lipgloss.Color(colors.Muted)
+	help := components.NewThemedHelp()
 
-	keyStyle := lipgloss.NewStyle().Bold(true).Foreground(infoColor)
-	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
-
-	var footer string
+	var bindings []key.Binding
 	if m.drawerOpen {
-		footer = keyStyle.Render("j/k") + labelStyle.Render(" scroll  ") +
-			keyStyle.Render("esc") + labelStyle.Render(" close")
+		bindings = []key.Binding{
+			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("j/k", "scroll")),
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("Esc", "close")),
+		}
 	} else {
 		selected := m.countSelected()
 		if selected > 0 {
-			footer = keyStyle.Render("i") + labelStyle.Render(" install  ") +
-				keyStyle.Render("u") + labelStyle.Render(" remove  ") +
-				keyStyle.Render("A") + labelStyle.Render(" clear  ") +
-				keyStyle.Render("q") + labelStyle.Render(" quit")
+			bindings = []key.Binding{
+				key.NewBinding(key.WithKeys("i"), key.WithHelp("i", "install")),
+				key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "remove")),
+				key.NewBinding(key.WithKeys("A"), key.WithHelp("A", "clear")),
+				key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			}
 		} else {
-			footer = keyStyle.Render("space") + labelStyle.Render(" select  ") +
-				keyStyle.Render("a") + labelStyle.Render(" all  ") +
-				keyStyle.Render("d") + labelStyle.Render(" details  ") +
-				keyStyle.Render("q") + labelStyle.Render(" quit")
+			bindings = []key.Binding{
+				key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "select")),
+				key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "all")),
+				key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "details")),
+				key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			}
 		}
 	}
 
@@ -976,5 +988,5 @@ func (m reposModel) renderFooter() string {
 		Width(m.width).
 		Padding(0, 1)
 
-	return footerStyle.Render(footer)
+	return footerStyle.Render(help.ShortHelpView(bindings))
 }

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/paths"
-	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
 )
 

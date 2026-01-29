@@ -6,12 +6,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/footprint-tools/cli/internal/dispatchers"
-	"github.com/footprint-tools/cli/internal/domain"
-	"github.com/footprint-tools/cli/internal/ui/splitpanel"
-	"github.com/footprint-tools/cli/internal/ui/style"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/footprint-tools/cli/internal/dispatchers"
+	"github.com/footprint-tools/cli/internal/domain"
+	"github.com/footprint-tools/cli/internal/ui/components"
+	"github.com/footprint-tools/cli/internal/ui/splitpanel"
+	"github.com/footprint-tools/cli/internal/ui/style"
+	overlay "github.com/rmhubbert/bubbletea-overlay"
 	"golang.org/x/term"
 )
 
@@ -38,6 +41,8 @@ func interactive(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 		deps:         deps,
 		cursor:       0,
 		focusSidebar: true,
+		editInput:    components.NewThemedInput(""),
+		help:         components.NewThemedHelp(),
 	}
 
 	p := tea.NewProgram(
@@ -63,21 +68,24 @@ func interactive(_ []string, _ *dispatchers.ParsedFlags, deps Deps) error {
 }
 
 type configModel struct {
-	keys           []domain.ConfigKey
-	values         map[string]string
-	deps           Deps
-	cursor         int
-	sidebarScroll  int
-	width          int
-	height         int
-	focusSidebar   bool
-	editing        bool
-	editValue      string
-	editCursor     int
-	cancelled      bool
-	changesMade    bool
-	message        string
+	keys          []domain.ConfigKey
+	values        map[string]string
+	deps          Deps
+	cursor        int
+	sidebarScroll int
+	width         int
+	height        int
+	focusSidebar  bool
+	editing       bool
+	editInput     components.ThemedInput
+	// Overlay confirmation
+	showConfirm   bool
+	confirmDialog components.ThemedConfirm
+	cancelled     bool
+	changesMade   bool
+	message       string
 	messageIsError bool
+	help          components.ThemedHelp
 }
 
 func (m configModel) Init() tea.Cmd {
@@ -91,7 +99,32 @@ func (m configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case components.ConfirmResult:
+		m.showConfirm = false
+		if msg.Confirmed {
+			configKey := m.keys[m.cursor]
+			if err := m.unsetValue(configKey.Name); err == nil {
+				delete(m.values, configKey.Name)
+				m.message = "Value cleared"
+				m.messageIsError = false
+				m.changesMade = true
+			} else {
+				m.message = "Error: " + err.Error()
+				m.messageIsError = true
+			}
+		} else {
+			m.message = "Cancelled"
+			m.messageIsError = false
+		}
+		return m, nil
+
 	case tea.KeyMsg:
+		if m.showConfirm {
+			var cmd tea.Cmd
+			newConfirm, cmd := m.confirmDialog.Update(msg)
+			m.confirmDialog = newConfirm.(components.ThemedConfirm)
+			return m, cmd
+		}
 		if m.editing {
 			return m.handleEditingInput(msg)
 		}
@@ -133,14 +166,15 @@ func (m configModel) handleNavigationInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 
 	case tea.KeyEnter:
-		key := m.keys[m.cursor]
-		currentValue := m.values[key.Name]
+		configKey := m.keys[m.cursor]
+		currentValue := m.values[configKey.Name]
 		if currentValue == "" {
-			currentValue = key.Default
+			currentValue = configKey.Default
 		}
 		m.editing = true
-		m.editValue = currentValue
-		m.editCursor = len(m.editValue)
+		m.editInput.SetValue(currentValue)
+		m.editInput.CursorEnd()
+		_ = m.editInput.Focus()
 		m.message = ""
 
 	case tea.KeyRunes:
@@ -197,16 +231,18 @@ func (m configModel) handleNavigationInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 				}
 			}
 		case "u", "U":
-			// Unset value
-			key := m.keys[m.cursor]
-			if err := m.unsetValue(key.Name); err == nil {
-				delete(m.values, key.Name)
-				m.message = "Value cleared"
-				m.messageIsError = false
-				m.changesMade = true
+			// Show confirmation overlay for unset
+			configKey := m.keys[m.cursor]
+			if m.values[configKey.Name] != "" {
+				m.confirmDialog = components.NewThemedConfirm(
+					"Unset value?",
+					fmt.Sprintf("Remove custom value for %s?", configKey.Name),
+				)
+				m.showConfirm = true
+				m.message = ""
 			} else {
-				m.message = "Error: " + err.Error()
-				m.messageIsError = true
+				m.message = "No value to unset"
+				m.messageIsError = false
 			}
 		}
 	}
@@ -214,17 +250,21 @@ func (m configModel) handleNavigationInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+
 func (m configModel) handleEditingInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyEsc:
 		m.editing = false
-		m.editValue = ""
+		m.editInput.Reset()
+		m.editInput.Blur()
 		m.message = ""
+		return m, nil
 
 	case tea.KeyEnter:
-		key := m.keys[m.cursor]
-		if err := m.saveValue(key.Name, m.editValue); err == nil {
-			m.values[key.Name] = m.editValue
+		configKey := m.keys[m.cursor]
+		value := m.editInput.Value()
+		if err := m.saveValue(configKey.Name, value); err == nil {
+			m.values[configKey.Name] = value
 			m.message = "Saved"
 			m.messageIsError = false
 			m.changesMade = true
@@ -233,41 +273,15 @@ func (m configModel) handleEditingInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.messageIsError = true
 		}
 		m.editing = false
-		m.editValue = ""
-
-	case tea.KeyBackspace:
-		if m.editCursor > 0 {
-			m.editValue = m.editValue[:m.editCursor-1] + m.editValue[m.editCursor:]
-			m.editCursor--
-		}
-
-	case tea.KeyDelete:
-		if m.editCursor < len(m.editValue) {
-			m.editValue = m.editValue[:m.editCursor] + m.editValue[m.editCursor+1:]
-		}
-
-	case tea.KeyLeft:
-		if m.editCursor > 0 {
-			m.editCursor--
-		}
-
-	case tea.KeyRight:
-		if m.editCursor < len(m.editValue) {
-			m.editCursor++
-		}
-
-	case tea.KeyHome, tea.KeyCtrlA:
-		m.editCursor = 0
-
-	case tea.KeyEnd, tea.KeyCtrlE:
-		m.editCursor = len(m.editValue)
-
-	case tea.KeyRunes:
-		m.editValue = m.editValue[:m.editCursor] + string(msg.Runes) + m.editValue[m.editCursor:]
-		m.editCursor += len(msg.Runes)
+		m.editInput.Reset()
+		m.editInput.Blur()
+		return m, nil
 	}
 
-	return m, nil
+	// Delegate all other input to the textinput component
+	var cmd tea.Cmd
+	m.editInput, cmd = m.editInput.Update(msg)
+	return m, cmd
 }
 
 func (m *configModel) saveValue(key, value string) error {
@@ -323,7 +337,20 @@ func (m configModel) View() string {
 	main := layout.Render(sidebarPanel, detailPanel, mainHeight)
 	footer := m.renderFooter(cfg)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, main, footer)
+	baseView := lipgloss.JoinVertical(lipgloss.Left, header, main, footer)
+
+	// Overlay confirmation dialog if active
+	if m.showConfirm {
+		return overlay.Composite(
+			m.confirmDialog.View(),
+			baseView,
+			overlay.Center,
+			overlay.Center,
+			0, 0,
+		)
+	}
+
+	return baseView
 }
 
 func (m configModel) renderHeader(cfg style.ColorConfig) string {
@@ -345,42 +372,36 @@ func (m configModel) renderHeader(cfg style.ColorConfig) string {
 	return headerStyle.Render(headerContent)
 }
 
-func (m configModel) renderFooter(cfg style.ColorConfig) string {
-	infoColor := lipgloss.Color(cfg.Info)
-	mutedColor := lipgloss.Color(cfg.Muted)
-	borderColor := lipgloss.Color(cfg.UIDim)
+func (m configModel) renderFooter(_ style.ColorConfig) string {
+	var bindings []key.Binding
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-		Background(infoColor).
-		Padding(0, 1)
-
-	sepStyle := lipgloss.NewStyle().Foreground(borderColor)
-	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
-
-	sep := sepStyle.Render(" | ")
-
-	var footer string
-	if m.editing {
-		footer = keyStyle.Render("Enter") + labelStyle.Render(" save") + sep +
-			keyStyle.Render("Esc") + labelStyle.Render(" cancel")
-	} else {
-		footer = keyStyle.Render("Tab") + labelStyle.Render(" switch") + sep +
-			keyStyle.Render("jk") + labelStyle.Render(" nav") + sep +
-			keyStyle.Render("Enter") + labelStyle.Render(" edit") + sep +
-			keyStyle.Render("d") + labelStyle.Render(" default") + sep +
-			keyStyle.Render("u") + labelStyle.Render(" unset") + sep +
-			keyStyle.Render("q") + labelStyle.Render(" quit")
+	switch {
+	case m.showConfirm:
+		bindings = components.ConfirmKeyBindings()
+	case m.editing:
+		bindings = []key.Binding{
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("Enter", "save")),
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("Esc", "cancel")),
+		}
+	default:
+		bindings = []key.Binding{
+			key.NewBinding(key.WithKeys("tab"), key.WithHelp("Tab", "switch")),
+			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("jk", "nav")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("Enter", "edit")),
+			key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "default")),
+			key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "unset")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		}
 	}
 
 	footerStyle := lipgloss.NewStyle().
 		Width(m.width).
 		Padding(0, 1)
 
-	return footerStyle.Render(footer)
+	return footerStyle.Render(m.help.ShortHelpView(bindings))
 }
 
-func (m *configModel) buildSidebarPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *configModel) buildSidebarPanel(_ *splitpanel.Layout, height int) splitpanel.Panel {
 	cfg := style.GetColors()
 	mutedColor := lipgloss.Color(cfg.Muted)
 	successColor := lipgloss.Color(cfg.Success)
@@ -418,10 +439,7 @@ func (m *configModel) buildSidebarPanel(layout *splitpanel.Layout, height int) s
 	}
 
 	// Calculate scroll offset to keep cursor visible
-	scrollOffset := m.sidebarScroll
-	if cursorVisualPos < scrollOffset {
-		scrollOffset = cursorVisualPos
-	}
+	scrollOffset := min(m.sidebarScroll, cursorVisualPos)
 	if cursorVisualPos >= scrollOffset+visibleHeight {
 		scrollOffset = cursorVisualPos - visibleHeight + 1
 	}
@@ -534,19 +552,15 @@ func (m *configModel) buildDetailPanel(layout *splitpanel.Layout, height int) sp
 	// Current value
 	if m.editing {
 		lines = append(lines, labelStyle.Render("Value ")+editStyle.Render("(editing)"))
-		// Show edit field with cursor
-		editDisplay := m.editValue[:m.editCursor] + "█"
-		if m.editCursor < len(m.editValue) {
-			editDisplay += m.editValue[m.editCursor:]
-		}
-		lines = append(lines, "  "+editStyle.Render(editDisplay))
+		lines = append(lines, "  "+m.editInput.View())
 	} else {
 		lines = append(lines, labelStyle.Render("Value"))
-		if isDefault && key.Default != "" {
+		switch {
+		case isDefault && key.Default != "":
 			lines = append(lines, "  "+defaultStyle.Render(displayValue+" (default)"))
-		} else if displayValue != "" {
+		case displayValue != "":
 			lines = append(lines, "  "+valueStyle.Render(displayValue))
-		} else {
+		default:
 			lines = append(lines, "  "+mutedStyle.Render("(not set)"))
 		}
 	}
@@ -558,8 +572,8 @@ func (m *configModel) buildDetailPanel(layout *splitpanel.Layout, height int) sp
 		lines = append(lines, "  "+mutedStyle.Render(key.Default))
 	}
 
-	// Message
-	if m.message != "" {
+	// Message (only show when not in overlay mode)
+	if m.message != "" && !m.showConfirm {
 		lines = append(lines, "")
 		if m.messageIsError {
 			msgStyle := lipgloss.NewStyle().Foreground(errorColor)

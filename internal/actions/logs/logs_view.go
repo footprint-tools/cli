@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/footprint-tools/cli/internal/format"
-	"github.com/footprint-tools/cli/internal/ui/splitpanel"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/footprint-tools/cli/internal/format"
+	"github.com/footprint-tools/cli/internal/ui/components"
+	"github.com/footprint-tools/cli/internal/ui/splitpanel"
 )
 
 // View implements tea.Model
@@ -61,11 +63,13 @@ func (m logsModel) renderHeader() string {
 	mutedColor := lipgloss.Color(colors.Muted)
 	warnColor := lipgloss.Color(colors.Warning)
 	successColor := lipgloss.Color(colors.Success)
+	uiActiveColor := lipgloss.Color(colors.UIActive)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(infoColor)
 	mutedStyle := lipgloss.NewStyle().Foreground(mutedColor)
 	warnStyle := lipgloss.NewStyle().Foreground(warnColor)
 	successStyle := lipgloss.NewStyle().Foreground(successColor)
+	activeStyle := lipgloss.NewStyle().Foreground(uiActiveColor)
 
 	// Title
 	title := titleStyle.Render("footprint logs")
@@ -95,9 +99,18 @@ func (m logsModel) renderHeader() string {
 		filterStr += mutedStyle.Render(" | Search: ") + mutedStyle.Render(m.filterQuery)
 	}
 
+	// Position indicator
+	positionStr := ""
+	filtered := m.filteredLines()
+	if len(filtered) > 0 {
+		current := m.cursor + 1
+		total := len(filtered)
+		positionStr = mutedStyle.Render(" | ") + activeStyle.Render(fmt.Sprintf("%d", current)) + mutedStyle.Render("/") + mutedStyle.Render(fmt.Sprintf("%d", total))
+	}
+
 	headerContent := title + mutedStyle.Render(" | ") +
 		mutedStyle.Render("Session: ") + timeStr +
-		status + filterStr
+		status + filterStr + positionStr
 
 	headerStyle := lipgloss.NewStyle().
 		Width(m.width).
@@ -106,7 +119,7 @@ func (m logsModel) renderHeader() string {
 	return headerStyle.Render(headerContent)
 }
 
-func (m *logsModel) buildStatsPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *logsModel) buildStatsPanel(_ *splitpanel.Layout, _ int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
@@ -187,15 +200,20 @@ func (m *logsModel) buildLogsPanel(layout *splitpanel.Layout, height int) splitp
 	filtered := m.filteredLines()
 	visibleHeight := height - 2
 
+	// Update viewport dimensions
+	contentWidth := layout.MainContentWidth()
+	m.logsViewport.SetSize(contentWidth, visibleHeight)
+
 	// Adjust scroll to keep cursor visible
-	scrollOffset := m.scrollPos
+	scrollOffset := m.logsViewport.YOffset()
 	if m.cursor < scrollOffset {
 		scrollOffset = m.cursor
+		m.logsViewport.SetYOffset(scrollOffset)
 	}
 	if m.cursor >= scrollOffset+visibleHeight {
 		scrollOffset = m.cursor - visibleHeight + 1
+		m.logsViewport.SetYOffset(scrollOffset)
 	}
-	m.scrollPos = scrollOffset
 
 	var lines []string
 	width := layout.MainContentWidth()
@@ -313,7 +331,7 @@ func (m logsModel) formatLogLine(logLine LogLine, width int, selected bool) stri
 	return prefix + strings.Join(styledParts, " ")
 }
 
-func (m *logsModel) buildDrawerPanel(layout *splitpanel.Layout, height int) splitpanel.Panel {
+func (m *logsModel) buildDrawerPanel(layout *splitpanel.Layout, _ int) splitpanel.Panel {
 	colors := m.colors
 	infoColor := lipgloss.Color(colors.Info)
 	mutedColor := lipgloss.Color(colors.Muted)
@@ -390,39 +408,34 @@ func (m *logsModel) buildDrawerPanel(layout *splitpanel.Layout, height int) spli
 }
 
 func (m logsModel) renderFooter() string {
-	colors := m.colors
-	infoColor := lipgloss.Color(colors.Info)
-	mutedColor := lipgloss.Color(colors.Muted)
-	borderColor := lipgloss.Color(colors.Border)
+	help := components.NewThemedHelp()
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-		Background(infoColor).
-		Padding(0, 1)
-
-	sepStyle := lipgloss.NewStyle().Foreground(borderColor)
-	labelStyle := lipgloss.NewStyle().Foreground(mutedColor)
-
-	sep := sepStyle.Render(" | ")
-
-	var footer string
+	var bindings []key.Binding
 	if m.drawerOpen {
-		footer = keyStyle.Render("Esc") + labelStyle.Render(" close") + sep +
-			keyStyle.Render("jk") + labelStyle.Render(" navigate")
+		bindings = []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("Esc", "close")),
+			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("jk", "navigate")),
+		}
 	} else {
-		footer = keyStyle.Render("q") + labelStyle.Render(" quit") + sep +
-			keyStyle.Render("p") + labelStyle.Render(" pause") + sep +
-			keyStyle.Render("a") + labelStyle.Render(" auto") + sep +
-			keyStyle.Render("jk") + labelStyle.Render(" nav") + sep +
-			keyStyle.Render("Enter") + labelStyle.Render(" detail") + sep +
-			labelStyle.Render("type to search")
+		bindings = []key.Binding{
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+			key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "pause")),
+			key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "auto")),
+			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("jk", "nav")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("Enter", "detail")),
+		}
+		if m.filterQuery == "" {
+			bindings = append(bindings, key.NewBinding(key.WithKeys(""), key.WithHelp("type", "search")))
+		} else {
+			bindings = append(bindings, key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clear")))
+		}
 	}
 
 	footerStyle := lipgloss.NewStyle().
 		Width(m.width).
 		Padding(0, 1)
 
-	return footerStyle.Render(footer)
+	return footerStyle.Render(help.ShortHelpView(bindings))
 }
 
 func (m logsModel) levelStyle(level string) lipgloss.Style {
