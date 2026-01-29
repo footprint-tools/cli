@@ -107,6 +107,9 @@ func extractFlagsAndCommands(args []string) ([]string, []string) {
 	// Flags that require a value (short form)
 	valueFlagsShort := map[string]string{
 		"-n": "--limit",
+		"-s": "--status",
+		"-S": "--source",
+		"-r": "--repo",
 	}
 
 	// Flags that require a value (long form prefix)
