@@ -487,7 +487,7 @@ $FP activity --oneline 2>/dev/null | head -5
 echo "  ... ($BACKFILL_COUNT total)"
 
 log "Running export..."
-$FP export --force
+$FP export --now
 
 log "Export directory:"
 find "$EXPORT_DIR" -type f -name "*.csv" 2>/dev/null | while read -r f; do

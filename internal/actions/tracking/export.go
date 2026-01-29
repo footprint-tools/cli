@@ -59,7 +59,7 @@ func Export(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	force := flags.Has("--force")
+	force := flags.Has("--now")
 	dryRun := flags.Has("--dry-run")
 	openDir := flags.Has("--open")
 
@@ -102,7 +102,7 @@ func export(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			return err
 		}
 		if !shouldExp {
-			_, _ = deps.Println("Export interval not reached. Use --force to export anyway.")
+			_, _ = deps.Println("Export interval not reached. Use --now to export anyway.")
 			return nil
 		}
 	}

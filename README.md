@@ -67,7 +67,7 @@ fp backfill --dry-run        # Preview only
 ### Export Data
 
 ```bash
-fp export --force            # Export now
+fp export --now              # Export immediately
 fp export --dry-run          # Preview
 fp export --open             # Open export folder
 ```

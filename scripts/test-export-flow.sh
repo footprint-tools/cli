@@ -75,7 +75,7 @@ else
 fi
 
 section "Exporting"
-$FP export --force
+$FP export --now
 success "Export completed"
 
 section "Done"

@@ -211,8 +211,8 @@ var (
 
 	ExportFlags = []dispatchers.FlagDescriptor{
 		{
-			Names:       []string{"--force"},
-			Description: "Export even if interval has not passed",
+			Names:       []string{"--now"},
+			Description: "Export immediately, ignoring the interval",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{

@@ -314,12 +314,12 @@ Examples:
 
 You usually don't need this - exports happen in the background.
 
-Use --force to export now (skip the hourly interval).
+Use --now to export immediately (skip the hourly interval).
 Use --open to view the export folder.
 Use --dry-run to preview without exporting.
 
 Export location: ~/.config/Footprint/exports`,
-		Usage:    "fp export [--force] [--dry-run] [--open]",
+		Usage:    "fp export [--now] [--dry-run] [--open]",
 		Action:   trackingactions.Export,
 		Flags:    ExportFlags,
 		Category: dispatchers.CategoryPlumbing,
