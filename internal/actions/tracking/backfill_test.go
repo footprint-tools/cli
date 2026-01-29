@@ -61,7 +61,7 @@ func TestBackfill_Background_GitNotAvailable(t *testing.T) {
 		GitIsAvailable: func() bool { return false },
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
 	err := backfill(nil, flags, deps)
 
@@ -73,7 +73,7 @@ func TestBackfill_Background_InvalidPath(t *testing.T) {
 		GitIsAvailable: func() bool { return true },
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
 	err := backfill([]string{"/nonexistent/path"}, flags, deps)
 
@@ -89,7 +89,7 @@ func TestBackfill_Background_NotInGitRepo(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
 	err := backfill([]string{dir}, flags, deps)
 
@@ -111,7 +111,7 @@ func TestBackfill_Background_InvalidRepo(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
 	err := backfill([]string{dir}, flags, deps)
 
@@ -139,7 +139,7 @@ func TestBackfill_Background_DBOpenError(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
 	err := backfill([]string{dir}, flags, deps)
 
@@ -191,9 +191,9 @@ func TestDoBackfillWork_GitNotAvailable(t *testing.T) {
 		GitIsAvailable: func() bool { return false },
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
-	err := doBackfillWork(nil, flags, deps)
+	err := doBackfillText(nil, flags, deps)
 
 	require.Error(t, err)
 }
@@ -203,9 +203,9 @@ func TestDoBackfillWork_InvalidPath(t *testing.T) {
 		GitIsAvailable: func() bool { return true },
 	}
 
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
-	err := doBackfillWork([]string{"/nonexistent/path"}, flags, deps)
+	err := doBackfillText([]string{"/nonexistent/path"}, flags, deps)
 
 	require.Error(t, err)
 }
@@ -219,9 +219,9 @@ func TestDoBackfillWork_NotInGitRepo(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
-	err := doBackfillWork([]string{dir}, flags, deps)
+	err := doBackfillText([]string{dir}, flags, deps)
 
 	require.Error(t, err)
 }
@@ -241,9 +241,9 @@ func TestDoBackfillWork_InvalidRepo(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	flags := dispatchers.NewParsedFlags([]string{"--background"})
+	flags := dispatchers.NewParsedFlags([]string{""})
 
-	err := doBackfillWork([]string{dir}, flags, deps)
+	err := doBackfillText([]string{dir}, flags, deps)
 
 	require.Error(t, err)
 }

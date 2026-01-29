@@ -258,6 +258,11 @@ var (
 			Description: "Open the export directory in file manager",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
 	BackfillFlags = []dispatchers.FlagDescriptor{
@@ -291,8 +296,8 @@ var (
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
-			Names:       []string{"--background"},
-			Description: "Run in background mode (internal)",
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}

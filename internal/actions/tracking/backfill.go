@@ -1,14 +1,12 @@
 package tracking
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"time"
 
 	"github.com/footprint-tools/cli/internal/dispatchers"
 	"github.com/footprint-tools/cli/internal/git"
-	"github.com/footprint-tools/cli/internal/log"
 	"github.com/footprint-tools/cli/internal/store"
 	"github.com/footprint-tools/cli/internal/usage"
 )
@@ -19,59 +17,20 @@ func Backfill(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func backfill(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	// Check if running in background mode
-	if flags.Has("--background") {
-		return doBackfillWork(args, flags, deps)
-	}
+	jsonOutput := flags.Has("--json")
 
-	// Check for dry-run (runs in foreground)
 	if flags.Has("--dry-run") {
+		if jsonOutput {
+			return doBackfillDryRunJSON(args, flags, deps)
+		}
 		return doBackfillDryRun(args, flags, deps)
 	}
 
-	// Foreground mode: launch background process and watch
-	return launchBackfillAndWatch(args, flags, deps)
-}
-
-// launchBackfillAndWatch starts the backfill in background and runs watch.
-func launchBackfillAndWatch(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	// Build the command to run backfill in background
-	execPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("could not get executable path: %w", err)
+	if jsonOutput {
+		return doBackfillJSON(args, flags, deps)
 	}
 
-	// Construct background command args
-	cmdArgs := []string{"backfill", "--background"}
-	cmdArgs = append(cmdArgs, args...)
-
-	// Pass through filter flags
-	for _, f := range flags.Raw() {
-		if f != "--dry-run" { // Don't pass dry-run to background
-			cmdArgs = append(cmdArgs, f)
-		}
-	}
-
-	// Start background process
-	cmd := exec.Command(execPath, cmdArgs...)
-	cmd.Stdout = nil // Detach stdout
-	cmd.Stderr = nil // Detach stderr
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("could not start background process: %w", err)
-	}
-
-	// Reap the background process to prevent zombies
-	go func() {
-		if err := cmd.Wait(); err != nil {
-			log.Debug("backfill: background process exited with error: %v", err)
-		}
-	}()
-
-	_, _ = deps.Println("Starting backfill in background...")
-
-	// Now run the watch command in foreground
-	return Log([]string{}, dispatchers.NewParsedFlags([]string{"--oneline"}))
+	return doBackfillText(args, flags, deps)
 }
 
 // setupBackfill validates the environment and resolves the repository.
@@ -99,55 +58,44 @@ func setupBackfill(args []string, deps Deps) (repoID string, repoRoot string, er
 	return string(id), repoRoot, nil
 }
 
-// doBackfillWork performs the actual backfill (runs in background).
-func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
-	log.Debug("backfill: starting background work")
-
+// doBackfillText performs the backfill and prints text output.
+func doBackfillText(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	repoID, repoRoot, err := setupBackfill(args, deps)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("backfill: repo=%s, path=%s", repoID, repoRoot)
-
-	// Parse filter options
 	opts := git.ListCommitsOptions{
 		Since: flags.String("--since", ""),
 		Until: flags.String("--until", ""),
 		Limit: flags.Int("--limit", 0),
 	}
 
-	// Get commits from git log
 	commits, err := git.ListCommits(repoRoot, opts)
 	if err != nil {
-		log.Error("backfill: failed to list commits: %v", err)
 		return fmt.Errorf("could not list commits: %w", err)
 	}
 
 	if len(commits) == 0 {
-		log.Debug("backfill: no commits found")
+		_, _ = deps.Println("No commits found to import")
 		return nil
 	}
 
-	log.Debug("backfill: found %d commits to import", len(commits))
+	_, _ = deps.Printf("Found %d commits to import...\n", len(commits))
 
-	// Open database
 	db, err := deps.OpenDB(deps.DBPath())
 	if err != nil {
-		log.Error("backfill: failed to open database: %v", err)
 		return fmt.Errorf("could not open database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
 	_ = deps.InitDB(db)
 
-	// Check for --branch override
 	branchOverride := flags.String("--branch", "")
 
-	// Insert each commit as an event
 	imported := 0
+	skipped := 0
 	for _, c := range commits {
-		// Determine branch
 		branch := branchOverride
 		if branch == "" {
 			branch = git.GetBranchForCommit(repoRoot, c.Hash)
@@ -156,14 +104,11 @@ func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) er
 			}
 		}
 
-		// Parse author date
 		timestamp, err := time.Parse(time.RFC3339, c.AuthorDate)
 		if err != nil {
-			log.Warn("backfill: could not parse author date '%s' for commit %s, using current time", c.AuthorDate, c.Hash[:7])
 			timestamp = time.Now().UTC()
 		}
 
-		// Create event
 		event := store.RepoEvent{
 			RepoID:    repoID,
 			RepoPath:  repoRoot,
@@ -174,13 +119,14 @@ func doBackfillWork(args []string, flags *dispatchers.ParsedFlags, deps Deps) er
 			Source:    store.SourceBackfill,
 		}
 
-		// Insert (UPSERT handles duplicates)
 		if err := deps.InsertEvent(db, event); err == nil {
 			imported++
+		} else {
+			skipped++
 		}
 	}
 
-	log.Info("backfill: imported %d commits for %s", imported, repoID)
+	_, _ = deps.Printf("Imported %d commits (%d skipped)\n", imported, skipped)
 	return nil
 }
 
@@ -225,5 +171,163 @@ func doBackfillDryRun(args []string, flags *dispatchers.ParsedFlags, deps Deps) 
 		_, _ = deps.Printf("  %.7s %s %s \"%s\"\n", c.Hash, c.AuthorDate[:10], branch, subject)
 	}
 
+	return nil
+}
+
+// doBackfillDryRunJSON shows what would be imported as JSON.
+func doBackfillDryRunJSON(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	repoID, repoRoot, err := setupBackfill(args, deps)
+	if err != nil {
+		return err
+	}
+
+	opts := git.ListCommitsOptions{
+		Since: flags.String("--since", ""),
+		Until: flags.String("--until", ""),
+		Limit: flags.Int("--limit", 0),
+	}
+
+	commits, err := git.ListCommits(repoRoot, opts)
+	if err != nil {
+		return fmt.Errorf("could not list commits: %w", err)
+	}
+
+	branchOverride := flags.String("--branch", "")
+
+	type commitEntry struct {
+		Hash       string `json:"hash"`
+		Branch     string `json:"branch"`
+		AuthorDate string `json:"author_date"`
+		Subject    string `json:"subject"`
+	}
+
+	type dryRunResult struct {
+		RepoID  string        `json:"repo_id"`
+		Path    string        `json:"path"`
+		Count   int           `json:"count"`
+		Commits []commitEntry `json:"commits"`
+	}
+
+	result := dryRunResult{
+		RepoID:  repoID,
+		Path:    repoRoot,
+		Count:   len(commits),
+		Commits: make([]commitEntry, 0, len(commits)),
+	}
+
+	for _, c := range commits {
+		branch := branchOverride
+		if branch == "" {
+			branch = git.GetBranchForCommit(repoRoot, c.Hash)
+			if branch == "" {
+				branch = "unknown"
+			}
+		}
+
+		result.Commits = append(result.Commits, commitEntry{
+			Hash:       c.Hash,
+			Branch:     branch,
+			AuthorDate: c.AuthorDate,
+			Subject:    c.Subject,
+		})
+	}
+
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, _ = deps.Println(string(data))
+	return nil
+}
+
+// doBackfillJSON runs backfill synchronously and outputs JSON result.
+func doBackfillJSON(args []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	repoID, repoRoot, err := setupBackfill(args, deps)
+	if err != nil {
+		return err
+	}
+
+	opts := git.ListCommitsOptions{
+		Since: flags.String("--since", ""),
+		Until: flags.String("--until", ""),
+		Limit: flags.Int("--limit", 0),
+	}
+
+	commits, err := git.ListCommits(repoRoot, opts)
+	if err != nil {
+		return fmt.Errorf("could not list commits: %w", err)
+	}
+
+	type backfillResult struct {
+		RepoID   string `json:"repo_id"`
+		Path     string `json:"path"`
+		Found    int    `json:"found"`
+		Imported int    `json:"imported"`
+		Skipped  int    `json:"skipped"`
+	}
+
+	result := backfillResult{
+		RepoID: repoID,
+		Path:   repoRoot,
+		Found:  len(commits),
+	}
+
+	if len(commits) == 0 {
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return err
+		}
+		_, _ = deps.Println(string(data))
+		return nil
+	}
+
+	// Open database
+	db, err := deps.OpenDB(deps.DBPath())
+	if err != nil {
+		return fmt.Errorf("could not open database: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	_ = deps.InitDB(db)
+
+	branchOverride := flags.String("--branch", "")
+
+	// Insert each commit as an event
+	for _, c := range commits {
+		branch := branchOverride
+		if branch == "" {
+			branch = git.GetBranchForCommit(repoRoot, c.Hash)
+			if branch == "" {
+				branch = "unknown"
+			}
+		}
+
+		timestamp, err := time.Parse(time.RFC3339, c.AuthorDate)
+		if err != nil {
+			timestamp = time.Now().UTC()
+		}
+
+		event := store.RepoEvent{
+			RepoID:    repoID,
+			RepoPath:  repoRoot,
+			Commit:    c.Hash,
+			Branch:    branch,
+			Timestamp: timestamp.UTC(),
+			Status:    store.StatusPending,
+			Source:    store.SourceBackfill,
+		}
+
+		if err := deps.InsertEvent(db, event); err == nil {
+			result.Imported++
+		} else {
+			result.Skipped++
+		}
+	}
+
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, _ = deps.Println(string(data))
 	return nil
 }
