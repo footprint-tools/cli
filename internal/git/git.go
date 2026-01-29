@@ -2,13 +2,18 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/footprint-tools/cli/internal/log"
 )
+
+// gitTimeout is the maximum time to wait for a git command to complete
+const gitTimeout = 30 * time.Second
 
 // dateArgPattern validates git date arguments to prevent injection
 // Accepts: ISO dates, relative dates (e.g., "2 weeks ago"), and common formats
@@ -109,12 +114,19 @@ func CommitAuthor() (string, error) {
 }
 
 func runGit(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		log.Debug("git: command failed: git %s: %v", strings.Join(args, " "), err)
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Error("git: command timed out after %v: git %s", gitTimeout, strings.Join(args, " "))
+		} else {
+			log.Debug("git: command failed: git %s: %v", strings.Join(args, " "), err)
+		}
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), nil
@@ -238,11 +250,11 @@ func parseDiffStats(output string) DiffStats {
 
 // HistoryCommit represents a commit from git log.
 type HistoryCommit struct {
-	Hash       string
-	AuthorName string
+	Hash        string
+	AuthorName  string
 	AuthorEmail string
-	AuthorDate string // ISO 8601 format
-	Subject    string
+	AuthorDate  string // ISO 8601 format
+	Subject     string
 }
 
 // ListCommitsOptions configures the ListCommits query.
