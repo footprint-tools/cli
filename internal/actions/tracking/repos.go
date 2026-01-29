@@ -1,6 +1,7 @@
 package tracking
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,8 +14,9 @@ import (
 )
 
 // ReposList lists repositories with recorded activity.
-func ReposList(_ []string, _ *dispatchers.ParsedFlags) error {
-	return reposListImpl(reposDeps{
+func ReposList(_ []string, flags *dispatchers.ParsedFlags) error {
+	jsonOutput := flags.Has("--json")
+	return reposListImpl(jsonOutput, reposDeps{
 		DBPath:    store.DBPath,
 		OpenStore: store.New,
 		Println:   defaultPrintln,
@@ -27,7 +29,7 @@ type reposDeps struct {
 	Println   func(...any) (int, error)
 }
 
-func reposListImpl(deps reposDeps) error {
+func reposListImpl(jsonOutput bool, deps reposDeps) error {
 	s, err := deps.OpenStore(deps.DBPath())
 	if err != nil {
 		return err
@@ -40,8 +42,27 @@ func reposListImpl(deps reposDeps) error {
 	}
 
 	if len(repos) == 0 {
-		_, _ = deps.Println("no tracked repositories")
-		_, _ = deps.Println("run 'fp setup' in a repo to install hooks")
+		if jsonOutput {
+			_, _ = deps.Println("[]")
+		} else {
+			_, _ = deps.Println("no tracked repositories")
+			_, _ = deps.Println("run 'fp setup' in a repo to install hooks")
+		}
+		return nil
+	}
+
+	if jsonOutput {
+		type repoJSON struct {
+			Path     string `json:"path"`
+			AddedAt  string `json:"added_at,omitempty"`
+			LastSeen string `json:"last_seen,omitempty"`
+		}
+		out := make([]repoJSON, 0, len(repos))
+		for _, r := range repos {
+			out = append(out, repoJSON{Path: r.Path, AddedAt: r.AddedAt, LastSeen: r.LastSeen})
+		}
+		data, _ := json.MarshalIndent(out, "", "  ")
+		_, _ = deps.Println(string(data))
 		return nil
 	}
 

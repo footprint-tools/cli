@@ -44,7 +44,7 @@ func TestReposList_Empty(t *testing.T) {
 		},
 	}
 
-	err := reposListImpl(deps)
+	err := reposListImpl(false, deps)
 	require.NoError(t, err)
 	require.Len(t, printedLines, 2)
 	require.Contains(t, printedLines[0], "no tracked repositories")
@@ -73,7 +73,7 @@ func TestReposList_WithRepos(t *testing.T) {
 		},
 	}
 
-	err := reposListImpl(deps)
+	err := reposListImpl(false, deps)
 	require.NoError(t, err)
 	require.Len(t, printedLines, 2)
 	require.Equal(t, "/path/to/repo1", printedLines[0])
@@ -91,7 +91,7 @@ func TestReposList_OpenStoreError(t *testing.T) {
 		},
 	}
 
-	err := reposListImpl(deps)
+	err := reposListImpl(false, deps)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to open store")
 }

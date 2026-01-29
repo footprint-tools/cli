@@ -47,6 +47,11 @@ var (
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
 			Names:       []string{"--enrich", "-e"},
 			Description: "Show commit message and author from git",
 			Scope:       dispatchers.FlagScopeLocal,
@@ -145,6 +150,11 @@ var (
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
 			Names:       []string{"--root"},
 			ValueHint:   "<path>",
 			Description: "Root directory to scan (default: current directory)",
@@ -177,6 +187,11 @@ var (
 		{
 			Names:       []string{"--oneline"},
 			Description: "Show one event per line",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON (one object per line)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{

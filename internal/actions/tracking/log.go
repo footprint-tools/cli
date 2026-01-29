@@ -2,6 +2,7 @@ package tracking
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -37,6 +38,7 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 
 	// Parse display flags
 	oneline := flags.Has("--oneline")
+	jsonOutput := flags.Has("--json")
 	enrich := flags.Has("--enrich")
 
 	// Parse filter flags
@@ -99,7 +101,9 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			}
 
 			for _, event := range events {
-				if enrich {
+				if jsonOutput {
+					outputEventJSON(event, enrich)
+				} else if enrich {
 					meta := git.GetCommitMetadata(event.RepoPath, event.Commit)
 					_, _ = fmt.Fprintln(os.Stdout, FormatEventEnriched(event, meta, oneline))
 				} else {
@@ -113,4 +117,38 @@ func logCmd(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 			}
 		}
 	}
+}
+
+func outputEventJSON(e store.RepoEvent, enrich bool) {
+	type jsonEvent struct {
+		ID        int64  `json:"id"`
+		RepoID    string `json:"repo_id"`
+		RepoPath  string `json:"repo_path"`
+		Commit    string `json:"commit"`
+		Branch    string `json:"branch"`
+		Timestamp string `json:"timestamp"`
+		Status    string `json:"status"`
+		Source    string `json:"source"`
+		Author    string `json:"author,omitempty"`
+		Message   string `json:"message,omitempty"`
+	}
+
+	je := jsonEvent{
+		ID:        e.ID,
+		RepoID:    e.RepoID,
+		RepoPath:  e.RepoPath,
+		Commit:    e.Commit,
+		Branch:    e.Branch,
+		Timestamp: e.Timestamp.Format("2006-01-02T15:04:05Z07:00"),
+		Status:    e.Status.String(),
+		Source:    e.Source.String(),
+	}
+	if enrich {
+		meta := git.GetCommitMetadata(e.RepoPath, e.Commit)
+		je.Author = meta.AuthorName
+		je.Message = meta.Subject
+	}
+
+	data, _ := json.Marshal(je)
+	_, _ = fmt.Fprintln(os.Stdout, string(data))
 }

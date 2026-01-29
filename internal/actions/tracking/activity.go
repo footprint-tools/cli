@@ -2,6 +2,7 @@ package tracking
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -24,6 +25,7 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	var filter store.EventFilter
 
 	oneline := flags.Has("--oneline")
+	jsonOutput := flags.Has("--json")
 	enrich := flags.Has("--enrich")
 
 	if statusStr := flags.String("--status", ""); statusStr != "" {
@@ -67,8 +69,16 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		return fmt.Errorf("failed to list events: %w", err)
 	}
 	if len(events) == 0 {
-		_, _ = deps.Println("no events")
+		if jsonOutput {
+			_, _ = deps.Println("[]")
+		} else {
+			_, _ = deps.Println("no events")
+		}
 		return nil
+	}
+
+	if jsonOutput {
+		return outputEventsJSON(events, enrich, deps)
 	}
 
 	var output bytes.Buffer
@@ -84,5 +94,47 @@ func activity(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	deps.Pager(output.String())
+	return nil
+}
+
+func outputEventsJSON(events []store.RepoEvent, enrich bool, deps Deps) error {
+	type jsonEvent struct {
+		ID        int64  `json:"id"`
+		RepoID    string `json:"repo_id"`
+		RepoPath  string `json:"repo_path"`
+		Commit    string `json:"commit"`
+		Branch    string `json:"branch"`
+		Timestamp string `json:"timestamp"`
+		Status    string `json:"status"`
+		Source    string `json:"source"`
+		Author    string `json:"author,omitempty"`
+		Message   string `json:"message,omitempty"`
+	}
+
+	out := make([]jsonEvent, 0, len(events))
+	for _, e := range events {
+		je := jsonEvent{
+			ID:        e.ID,
+			RepoID:    e.RepoID,
+			RepoPath:  e.RepoPath,
+			Commit:    e.Commit,
+			Branch:    e.Branch,
+			Timestamp: e.Timestamp.Format("2006-01-02T15:04:05Z07:00"),
+			Status:    e.Status.String(),
+			Source:    e.Source.String(),
+		}
+		if enrich {
+			meta := git.GetCommitMetadata(e.RepoPath, e.Commit)
+			je.Author = meta.AuthorName
+			je.Message = meta.Subject
+		}
+		out = append(out, je)
+	}
+
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	_, _ = deps.Println(string(data))
 	return nil
 }
