@@ -75,6 +75,7 @@ func reposListImpl(jsonOutput bool, deps reposDeps) error {
 
 // ReposScan scans directories for git repositories and shows their hook status.
 func ReposScan(_ []string, flags *dispatchers.ParsedFlags) error {
+	jsonOutput := flags.Has("--json")
 	root := flags.String("--root", ".")
 
 	absRoot, err := filepath.Abs(root)
@@ -85,15 +86,25 @@ func ReposScan(_ []string, flags *dispatchers.ParsedFlags) error {
 
 	maxDepth := flags.Int("--depth", 25)
 
-	fmt.Printf("Scanning for git repositories in %s...\n", root)
+	if !jsonOutput {
+		fmt.Printf("Scanning for git repositories in %s...\n", root)
+	}
 	repos, err := scanForRepos(root, maxDepth)
 	if err != nil {
 		return err
 	}
 
 	if len(repos) == 0 {
-		fmt.Println("No git repositories found")
+		if jsonOutput {
+			fmt.Println("[]")
+		} else {
+			fmt.Println("No git repositories found")
+		}
 		return nil
+	}
+
+	if jsonOutput {
+		return reposScanJSON(repos)
 	}
 
 	fmt.Printf("Found %d repositories\n\n", len(repos))
@@ -147,6 +158,37 @@ func ReposScan(_ []string, flags *dispatchers.ParsedFlags) error {
 		fmt.Printf("\nUse 'fp repos -i' to install hooks interactively, or 'fp setup <path>' for individual repos.\n")
 	}
 
+	return nil
+}
+
+func reposScanJSON(repos []RepoEntry) error {
+	type repoJSON struct {
+		Path         string `json:"path"`
+		Name         string `json:"name"`
+		HasHooks     bool   `json:"has_hooks"`
+		CanInstall   bool   `json:"can_install"`
+		Status       string `json:"status,omitempty"`
+	}
+
+	out := make([]repoJSON, 0, len(repos))
+	for _, r := range repos {
+		entry := repoJSON{
+			Path:       r.Path,
+			Name:       r.Name,
+			HasHooks:   r.HasHooks,
+			CanInstall: r.Inspection.Status.CanInstall(),
+		}
+		if !r.HasHooks && !r.Inspection.Status.CanInstall() {
+			entry.Status = r.Inspection.Status.String()
+		}
+		out = append(out, entry)
+	}
+
+	data, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }
 

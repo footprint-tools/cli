@@ -186,6 +186,19 @@ var (
 			Description: "Maximum depth to scan (default: 25)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
+	ReposCheckFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
 	WatchFlags = []dispatchers.FlagDescriptor{
@@ -306,6 +319,11 @@ var (
 			Description: "Number of lines to show (default: 50, shorthand: -<n>)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON array of log entries",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
 	}
 
 	UpdateFlags = []dispatchers.FlagDescriptor{
@@ -324,6 +342,14 @@ var (
 		},
 	}
 
+	VersionFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
 	ThemeFlags = []dispatchers.FlagDescriptor{
 		{
 			Names:       []string{"-i", "--interactive"},
@@ -336,6 +362,14 @@ var (
 		{
 			Names:       []string{"-i", "--interactive"},
 			Description: "Interactive settings editor",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+	}
+
+	ConfigListFlags = []dispatchers.FlagDescriptor{
+		{
+			Names:       []string{"--json"},
+			Description: "Output as JSON",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}

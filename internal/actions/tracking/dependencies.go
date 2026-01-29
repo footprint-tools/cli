@@ -2,7 +2,6 @@ package tracking
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"time"
 
@@ -73,8 +72,8 @@ func DefaultDeps() Deps {
 		ListEvents:   store.ListEvents,
 		MarkOrphaned: markOrphanedWrapper,
 
-		Printf:  fmt.Printf,
-		Println: fmt.Println,
+		Printf:  ui.Printf,
+		Println: ui.Println,
 		Pager:   ui.Pager,
 
 		Now:    time.Now,

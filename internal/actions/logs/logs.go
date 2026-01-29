@@ -3,10 +3,12 @@ package logs
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -23,12 +25,17 @@ func View(args []string, flags *dispatchers.ParsedFlags) error {
 }
 
 func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
+	jsonOutput := flags.Has("--json")
 	logPath := deps.LogFilePath()
 
 	// Check if log file exists
 	info, err := deps.Stat(logPath)
 	if os.IsNotExist(err) {
-		_, _ = deps.Println(style.Muted("No log file found at " + logPath))
+		if jsonOutput {
+			_, _ = deps.Println("[]")
+		} else {
+			_, _ = deps.Println(style.Muted("No log file found at " + logPath))
+		}
 		return nil
 	}
 	if err != nil {
@@ -36,7 +43,11 @@ func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 	}
 
 	if info.Size() == 0 {
-		_, _ = deps.Println(style.Muted("Log file is empty"))
+		if jsonOutput {
+			_, _ = deps.Println("[]")
+		} else {
+			_, _ = deps.Println(style.Muted("Log file is empty"))
+		}
 		return nil
 	}
 
@@ -65,10 +76,61 @@ func view(_ []string, flags *dispatchers.ParsedFlags, deps Deps) error {
 		start = len(lines) - limit
 	}
 
+	if jsonOutput {
+		return viewJSON(lines[start:], deps)
+	}
+
 	for _, line := range lines[start:] {
 		_, _ = deps.Println(colorizeLogLine(line))
 	}
 
+	return nil
+}
+
+// logEntryRegex matches log lines like: [2025-01-29 10:30:45] INFO hooks/global.go:42: message
+var logEntryRegex = regexp.MustCompile(`^\[([^\]]+)\]\s+(DEBUG|INFO|WARN|ERROR)\s+([^:]+):(\d+):\s*(.*)$`)
+
+func viewJSON(lines []string, deps Deps) error {
+	type logEntry struct {
+		Timestamp string `json:"timestamp"`
+		Level     string `json:"level"`
+		Location  string `json:"location,omitempty"`
+		Line      int    `json:"line,omitempty"`
+		Message   string `json:"message"`
+		Raw       string `json:"raw,omitempty"`
+	}
+
+	entries := make([]logEntry, 0, len(lines))
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		matches := logEntryRegex.FindStringSubmatch(line)
+		if matches != nil {
+			lineNum := 0
+			fmt.Sscanf(matches[4], "%d", &lineNum)
+			entries = append(entries, logEntry{
+				Timestamp: matches[1],
+				Level:     matches[2],
+				Location:  matches[3],
+				Line:      lineNum,
+				Message:   matches[5],
+			})
+		} else {
+			// Line doesn't match expected format, include as raw
+			entries = append(entries, logEntry{
+				Message: line,
+				Raw:     line,
+			})
+		}
+	}
+
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, _ = deps.Println(string(data))
 	return nil
 }
 
