@@ -279,8 +279,9 @@ Each entry shows: time, event type, repository, commit/branch info.
 
 Examples:
   fp activity           # Recent events
-  fp activity -n 50     # Show 50 events
+  fp activity -50       # Show 50 events (shorthand for -n 50)
   fp activity -e        # Include commit messages
+  fp activity --json    # Output as JSON
   fp activity --repo github.com/user/project  # One repo only`,
 		Usage:    "fp activity",
 		Action:   trackingactions.Activity,

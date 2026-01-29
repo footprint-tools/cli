@@ -89,7 +89,7 @@ var (
 		{
 			Names:       []string{"--limit", "-n"},
 			ValueHint:   "<n>",
-			Description: "Limit number of results",
+			Description: "Limit number of results (shorthand: -<n>, e.g., -50)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
@@ -258,7 +258,7 @@ var (
 		{
 			Names:       []string{"--limit", "-n"},
 			ValueHint:   "<n>",
-			Description: "Limit number of commits to import",
+			Description: "Limit number of commits to import (shorthand: -<n>)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 		{
@@ -298,7 +298,7 @@ var (
 		{
 			Names:       []string{"--limit", "-n"},
 			ValueHint:   "<n>",
-			Description: "Number of lines to show (default: 50)",
+			Description: "Number of lines to show (default: 50, shorthand: -<n>)",
 			Scope:       dispatchers.FlagScopeLocal,
 		},
 	}
