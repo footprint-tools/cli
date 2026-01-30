@@ -32,14 +32,13 @@ func BuildTree() *dispatchers.DispatchNode {
 	})
 
 	dispatchers.Command(dispatchers.CommandSpec{
-		Name:        "completions",
-		Parent:      root,
-		Summary:     "Install shell completions",
-		Description: `Installs tab-completion for fp commands.
+		Name:    "completions",
+		Parent:  root,
+		Summary: "Set up shell completions",
+		Description: `Shows instructions for enabling tab-completion.
 
-Auto-detects your shell if not specified. For Fish and Bash (with
-bash-completion), installs directly. For Zsh, prompts to add an
-eval line to your ~/.zshrc.`,
+Auto-detects your shell if not specified. Use --script to output the
+completion script directly (for use with eval or redirection).`,
 		Usage:    "fp completions [bash|zsh|fish]",
 		Args:     []dispatchers.ArgSpec{{Name: "shell", Description: "Shell type (bash, zsh, fish). Auto-detected if omitted."}},
 		Flags:    CompletionsFlags,
@@ -282,6 +281,7 @@ Each entry shows: time, event type, repository, commit/branch info.
 
 Examples:
   fp activity           # Recent events
+  fp activity -i        # Interactive viewer with filtering
   fp activity -50       # Show 50 events (shorthand for -n 50)
   fp activity -e        # Include commit messages
   fp activity --json    # Output as JSON

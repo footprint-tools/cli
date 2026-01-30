@@ -47,6 +47,11 @@ var (
 
 	ActivityFlags = []dispatchers.FlagDescriptor{
 		{
+			Names:       []string{"-i", "--interactive"},
+			Description: "Interactive activity viewer with filtering and detail view",
+			Scope:       dispatchers.FlagScopeLocal,
+		},
+		{
 			Names:       []string{"--oneline"},
 			Description: "Show one event per line",
 			Scope:       dispatchers.FlagScopeLocal,
