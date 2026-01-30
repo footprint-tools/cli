@@ -21,6 +21,10 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Initialize logger based on config (must read config before CLI setup)
 	initLogger()
 	defer func() { _ = log.Close() }()
@@ -32,7 +36,10 @@ func main() {
 
 	// Enable styling if stdout is a terminal and --no-color is not set
 	enableColor := term.IsTerminal(int(os.Stdout.Fd())) && !flags.Has("--no-color")
-	cfg, _ := config.GetAll()
+	cfg, err := config.GetAll()
+	if err != nil {
+		log.Debug("main: failed to load config, using defaults: %v", err)
+	}
 	style.Init(enableColor, cfg)
 
 	// Disable pager if --no-pager is set
@@ -66,10 +73,10 @@ func main() {
 	if err != nil {
 		if ue, ok := err.(*usage.Error); ok {
 			fmt.Fprintln(os.Stderr, ue.Error())
-			os.Exit(ue.GetExitCode())
+			return ue.GetExitCode()
 		}
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	// Check for updates before executing interactive commands
@@ -79,13 +86,11 @@ func main() {
 
 	if err := res.Execute(res.Args, res.Flags); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	// Exit with non-zero code if resolution requests it (e.g., fp with no args)
-	if res.ExitCode != 0 {
-		os.Exit(res.ExitCode)
-	}
+	return res.ExitCode
 }
 
 // initLogger initializes the logger based on config settings.
