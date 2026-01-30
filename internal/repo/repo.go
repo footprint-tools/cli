@@ -104,6 +104,7 @@ func DeriveID(remoteURL, repoRoot string) (RepoID, error) {
 // Transforms:
 //   - "github.com/user/repo" -> "github.com__user__repo"
 //   - "local:/path/to/repo" -> "local__path__to__repo"
+//
 // The transformation is deterministic and reversible (for display).
 func (id RepoID) ToFilesystemSafe() string {
 	idString := string(id)

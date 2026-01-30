@@ -100,4 +100,3 @@ func ConfigFilePath() (string, error) {
 func LogFilePath() string {
 	return filepath.Join(AppDataDir(), "fp.log")
 }
-
