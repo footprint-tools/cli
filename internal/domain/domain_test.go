@@ -99,10 +99,10 @@ func TestEventSource_String(t *testing.T) {
 		source   EventSource
 		expected string
 	}{
-		{SourcePostCommit, "POST-COMMIT"},
-		{SourceBackfill, "BACKFILL"},
-		{SourceManual, "MANUAL"},
-		{EventSource(99), "UNKNOWN"},
+		{SourcePostCommit, "post-commit"},
+		{SourceBackfill, "backfill"},
+		{SourceManual, "manual"},
+		{EventSource(99), "unknown"},
 	}
 
 	for _, tt := range tests {

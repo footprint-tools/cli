@@ -2,7 +2,10 @@ VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev
 LDFLAGS := -ldflags "-X github.com/footprint-tools/cli/internal/app.Version=$(VERSION)"
 LDFLAGS_RELEASE := -ldflags "-s -w -X github.com/footprint-tools/cli/internal/app.Version=$(VERSION)"
 
-.PHONY: all build test lint fmt clean install wipe integration simulate-activity changelog release
+DEV_HOME := $(HOME)/.footprint-dev
+DEV_LDFLAGS := -ldflags "-X github.com/footprint-tools/cli/internal/paths.DefaultHome=$(DEV_HOME) -X github.com/footprint-tools/cli/internal/app.Version=$(VERSION)"
+
+.PHONY: all build test lint fmt clean install wipe integration simulate-activity changelog release fpdev fpdev-fast snapshot
 
 # Default target
 all: build
@@ -20,6 +23,30 @@ release: test
 	go build $(LDFLAGS_RELEASE) -o fp ./cmd/fp
 	@echo "Built release binary: $$(ls -lh fp | awk '{print $$5}')"
 
+# Build dev binary with isolated data directory
+fpdev: test
+	go build $(DEV_LDFLAGS) -o fpdev ./cmd/fp
+
+# Build dev binary without tests (quick iteration)
+fpdev-fast:
+	go build $(DEV_LDFLAGS) -o fpdev ./cmd/fp
+
+# Copy production DB and config to dev environment
+snapshot:
+	@mkdir -p "$(DEV_HOME)"
+	@PROD_DB="$(HOME)/Library/Application Support/footprint/store.db"; \
+	if [ -f "$$PROD_DB" ]; then \
+		sqlite3 "$$PROD_DB" ".backup '$(DEV_HOME)/store.db'"; \
+		echo "DB copiada a $(DEV_HOME)/store.db"; \
+	else \
+		echo "No se encontró DB de producción en $$PROD_DB"; \
+	fi
+	@if [ -f "$(HOME)/.fprc" ]; then \
+		cp "$(HOME)/.fprc" "$(DEV_HOME)/.fprc"; \
+		echo "Config copiada a $(DEV_HOME)/.fprc"; \
+	fi
+	@echo "Snapshot listo. Usa ./fpdev para probar."
+
 # Run unit tests
 test:
 	go test ./...
@@ -35,7 +62,7 @@ fmt:
 
 # Clean build artifacts
 clean:
-	rm -f fp
+	rm -f fp fpdev
 	go clean
 
 # Install to GOPATH/bin

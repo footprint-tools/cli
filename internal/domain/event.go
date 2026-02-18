@@ -68,21 +68,21 @@ const (
 func (s EventSource) String() string {
 	switch s {
 	case SourcePostCommit:
-		return "POST-COMMIT"
+		return "post-commit"
 	case SourcePostRewrite:
-		return "POST-REWRITE"
+		return "post-rewrite"
 	case SourcePostCheckout:
-		return "POST-CHECKOUT"
+		return "post-checkout"
 	case SourcePostMerge:
-		return "POST-MERGE"
+		return "post-merge"
 	case SourcePrePush:
-		return "PRE-PUSH"
+		return "pre-push"
 	case SourceManual:
-		return "MANUAL"
+		return "manual"
 	case SourceBackfill:
-		return "BACKFILL"
+		return "backfill"
 	default:
-		return "UNKNOWN"
+		return "unknown"
 	}
 }
 

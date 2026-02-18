@@ -232,8 +232,8 @@ func TestRenderColorPreview(t *testing.T) {
 	// Verify output contains expected labels
 	require.Contains(t, output, "success")
 	require.Contains(t, output, "error")
-	require.Contains(t, output, "POST-COMMIT")
-	require.Contains(t, output, "PRE-PUSH")
+	require.Contains(t, output, "post-commit")
+	require.Contains(t, output, "pre-push")
 }
 
 func TestRenderColorPreview_BoldHeader(t *testing.T) {

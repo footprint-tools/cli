@@ -52,13 +52,13 @@ func TestFormatSource_AllSources(t *testing.T) {
 		source store.Source
 		expect string
 	}{
-		{store.SourcePostCommit, "POST-COMMIT"},
-		{store.SourcePostRewrite, "POST-REWRITE"},
-		{store.SourcePostCheckout, "POST-CHECKOUT"},
-		{store.SourcePostMerge, "POST-MERGE"},
-		{store.SourcePrePush, "PRE-PUSH"},
-		{store.SourceBackfill, "BACKFILL"},
-		{store.SourceManual, "MANUAL"},
+		{store.SourcePostCommit, "post-commit"},
+		{store.SourcePostRewrite, "post-rewrite"},
+		{store.SourcePostCheckout, "post-checkout"},
+		{store.SourcePostMerge, "post-merge"},
+		{store.SourcePrePush, "pre-push"},
+		{store.SourceBackfill, "backfill"},
+		{store.SourceManual, "manual"},
 	}
 
 	for _, tt := range tests {

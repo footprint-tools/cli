@@ -29,6 +29,11 @@ func run() int {
 	initLogger()
 	defer func() { _ = log.Close() }()
 
+	// Print dev mode indicator to stderr when using a custom home
+	if h := paths.HomeOverride(); h != "" {
+		fmt.Fprintf(os.Stderr, "[dev: %s]\n", h)
+	}
+
 	args := os.Args[1:]
 
 	rawFlags, commands := extractFlagsAndCommands(args)

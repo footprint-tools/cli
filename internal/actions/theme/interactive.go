@@ -497,19 +497,19 @@ func buildDetailedPreview(name string, cfg style.ColorConfig, _ int) string {
 	// Event source colors
 	b.WriteString(headerStyle.Render("EVENT SOURCES"))
 	b.WriteString("\n")
-	b.WriteString(colorize("POST-COMMIT ", cfg.Color1) + mutedStyle.Render("• commit events"))
+	b.WriteString(colorize("post-commit ", cfg.Color1) + mutedStyle.Render("• commit events"))
 	b.WriteString("\n")
-	b.WriteString(colorize("POST-REWRITE ", cfg.Color2) + mutedStyle.Render("• rebase, amend"))
+	b.WriteString(colorize("post-rewrite ", cfg.Color2) + mutedStyle.Render("• rebase, amend"))
 	b.WriteString("\n")
-	b.WriteString(colorize("POST-CHECKOUT ", cfg.Color3) + mutedStyle.Render("• branch switches"))
+	b.WriteString(colorize("post-checkout ", cfg.Color3) + mutedStyle.Render("• branch switches"))
 	b.WriteString("\n")
-	b.WriteString(colorize("POST-MERGE ", cfg.Color4) + mutedStyle.Render("• merge operations"))
+	b.WriteString(colorize("post-merge ", cfg.Color4) + mutedStyle.Render("• merge operations"))
 	b.WriteString("\n")
-	b.WriteString(colorize("PRE-PUSH ", cfg.Color5) + mutedStyle.Render("• push events"))
+	b.WriteString(colorize("pre-push ", cfg.Color5) + mutedStyle.Render("• push events"))
 	b.WriteString("\n")
-	b.WriteString(colorize("BACKFILL ", cfg.Color6) + mutedStyle.Render("• imported events"))
+	b.WriteString(colorize("backfill ", cfg.Color6) + mutedStyle.Render("• imported events"))
 	b.WriteString("\n")
-	b.WriteString(colorize("MANUAL ", cfg.Color7) + mutedStyle.Render("• manual records"))
+	b.WriteString(colorize("manual ", cfg.Color7) + mutedStyle.Render("• manual records"))
 	b.WriteString("\n\n")
 
 	// UI Examples section
@@ -668,13 +668,13 @@ func buildThemeDetailsLines(name string, cfg style.ColorConfig) []string {
 	lines = append(lines, "")
 	lines = append(lines, muted.Render("Sources:"))
 
-	lines = append(lines, source("POST-COMMIT", cfg.Color1))
-	lines = append(lines, source("POST-REWRITE", cfg.Color2))
-	lines = append(lines, source("POST-CHECKOUT", cfg.Color3))
-	lines = append(lines, source("POST-MERGE", cfg.Color4))
-	lines = append(lines, source("PRE-PUSH", cfg.Color5))
-	lines = append(lines, source("BACKFILL", cfg.Color6))
-	lines = append(lines, source("MANUAL", cfg.Color7))
+	lines = append(lines, source("post-commit", cfg.Color1))
+	lines = append(lines, source("post-rewrite", cfg.Color2))
+	lines = append(lines, source("post-checkout", cfg.Color3))
+	lines = append(lines, source("post-merge", cfg.Color4))
+	lines = append(lines, source("pre-push", cfg.Color5))
+	lines = append(lines, source("backfill", cfg.Color6))
+	lines = append(lines, source("manual", cfg.Color7))
 
 	return lines
 }

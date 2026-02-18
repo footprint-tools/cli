@@ -19,13 +19,13 @@ type ColorConfig struct {
 	Border   string // Interactive delimiters (scrollbars, card borders, etc.)
 	UIActive string // Interactive UI elements when focused/active (scrollbar thumb, focused borders)
 	UIDim    string // Interactive UI elements when unfocused/inactive (dimmed state)
-	Color1   string // POST-COMMIT
-	Color2   string // POST-REWRITE
-	Color3   string // POST-CHECKOUT
-	Color4   string // POST-MERGE
-	Color5   string // PRE-PUSH
-	Color6   string // BACKFILL
-	Color7   string // MANUAL
+	Color1   string // post-commit
+	Color2   string // post-rewrite
+	Color3   string // post-checkout
+	Color4   string // post-merge
+	Color5   string // pre-push
+	Color6   string // backfill
+	Color7   string // manual
 }
 
 // BaseThemeNames lists available theme bases (auto-detects dark/light).
@@ -68,13 +68,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "244", // medium gray for borders
 		UIActive: "14",  // bright cyan for active UI elements
 		UIDim:    "240", // dark gray for inactive UI elements
-		Color1:   "10",  // POST-COMMIT (bright green)
-		Color2:   "13",  // POST-REWRITE (bright magenta)
-		Color3:   "12",  // POST-CHECKOUT (bright blue)
-		Color4:   "14",  // POST-MERGE (bright cyan)
-		Color5:   "11",  // PRE-PUSH (bright yellow)
-		Color6:   "8",   // BACKFILL (dark gray)
-		Color7:   "15",  // MANUAL (white)
+		Color1:   "10",  // post-commit (bright green)
+		Color2:   "13",  // post-rewrite (bright magenta)
+		Color3:   "12",  // post-checkout (bright blue)
+		Color4:   "14",  // post-merge (bright cyan)
+		Color5:   "11",  // pre-push (bright yellow)
+		Color6:   "8",   // backfill (dark gray)
+		Color7:   "15",  // manual (white)
 	},
 
 	// Classic light - dark saturated colors for light/white backgrounds.
@@ -89,13 +89,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "250", // light gray for borders
 		UIActive: "27",  // dark blue for active UI elements
 		UIDim:    "252", // very light gray for inactive UI elements
-		Color1:   "28",  // POST-COMMIT (dark green)
-		Color2:   "90",  // POST-REWRITE (dark magenta)
-		Color3:   "27",  // POST-CHECKOUT (dark blue)
-		Color4:   "30",  // POST-MERGE (dark cyan)
-		Color5:   "130", // PRE-PUSH (dark orange)
-		Color6:   "240", // BACKFILL (dark gray)
-		Color7:   "235", // MANUAL (near black)
+		Color1:   "28",  // post-commit (dark green)
+		Color2:   "90",  // post-rewrite (dark magenta)
+		Color3:   "27",  // post-checkout (dark blue)
+		Color4:   "30",  // post-merge (dark cyan)
+		Color5:   "130", // pre-push (dark orange)
+		Color6:   "240", // backfill (dark gray)
+		Color7:   "235", // manual (near black)
 	},
 
 	// Neon dark - vivid saturated colors, cyberpunk aesthetic.
@@ -110,13 +110,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "93",  // purple for neon borders
 		UIActive: "201", // hot magenta for active UI elements
 		UIDim:    "93",  // purple for inactive UI elements
-		Color1:   "46",  // POST-COMMIT (neon green)
-		Color2:   "201", // POST-REWRITE (hot magenta)
-		Color3:   "39",  // POST-CHECKOUT (deep sky blue)
-		Color4:   "51",  // POST-MERGE (cyan)
-		Color5:   "226", // PRE-PUSH (yellow)
-		Color6:   "242", // BACKFILL (gray)
-		Color7:   "231", // MANUAL (white)
+		Color1:   "46",  // post-commit (neon green)
+		Color2:   "201", // post-rewrite (hot magenta)
+		Color3:   "39",  // post-checkout (deep sky blue)
+		Color4:   "51",  // post-merge (cyan)
+		Color5:   "226", // pre-push (yellow)
+		Color6:   "242", // backfill (gray)
+		Color7:   "231", // manual (white)
 	},
 
 	// Neon light - deep saturated colors for light backgrounds.
@@ -131,13 +131,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "99",  // medium purple for borders
 		UIActive: "127", // dark magenta for active UI elements
 		UIDim:    "99",  // medium purple for inactive UI elements
-		Color1:   "28",  // POST-COMMIT (forest green)
-		Color2:   "127", // POST-REWRITE (dark magenta)
-		Color3:   "26",  // POST-CHECKOUT (navy)
-		Color4:   "37",  // POST-MERGE (teal)
-		Color5:   "166", // PRE-PUSH (dark orange)
-		Color6:   "241", // BACKFILL (gray)
-		Color7:   "236", // MANUAL (dark gray)
+		Color1:   "28",  // post-commit (forest green)
+		Color2:   "127", // post-rewrite (dark magenta)
+		Color3:   "26",  // post-checkout (navy)
+		Color4:   "37",  // post-merge (teal)
+		Color5:   "166", // pre-push (dark orange)
+		Color6:   "241", // backfill (gray)
+		Color7:   "236", // manual (dark gray)
 	},
 
 	// Aurora dark - northern lights inspired palette for dark backgrounds.
@@ -152,13 +152,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "141", // light purple for aurora borders
 		UIActive: "147", // lavender for active UI elements
 		UIDim:    "141", // light purple for inactive UI elements
-		Color1:   "121", // POST-COMMIT (mint)
-		Color2:   "183", // POST-REWRITE (orchid)
-		Color3:   "111", // POST-CHECKOUT (sky blue)
-		Color4:   "123", // POST-MERGE (turquoise)
-		Color5:   "222", // PRE-PUSH (gold)
-		Color6:   "245", // BACKFILL (gray)
-		Color7:   "189", // MANUAL (light lavender)
+		Color1:   "121", // post-commit (mint)
+		Color2:   "183", // post-rewrite (orchid)
+		Color3:   "111", // post-checkout (sky blue)
+		Color4:   "123", // post-merge (turquoise)
+		Color5:   "222", // pre-push (gold)
+		Color6:   "245", // backfill (gray)
+		Color7:   "189", // manual (light lavender)
 	},
 
 	// Aurora light - deep jewel tones for light backgrounds.
@@ -173,13 +173,13 @@ var Themes = map[string]ColorConfig{
 		Header:   "bold",
 		UIActive: "62",  // purple for active UI elements
 		UIDim:    "103", // medium purple for inactive UI elements
-		Color1:   "30",  // POST-COMMIT (dark teal)
-		Color2:   "133", // POST-REWRITE (medium orchid)
-		Color3:   "61",  // POST-CHECKOUT (slate blue)
-		Color4:   "37",  // POST-MERGE (teal)
-		Color5:   "136", // PRE-PUSH (amber)
-		Color6:   "241", // BACKFILL (dark gray)
-		Color7:   "96",  // MANUAL (plum)
+		Color1:   "30",  // post-commit (dark teal)
+		Color2:   "133", // post-rewrite (medium orchid)
+		Color3:   "61",  // post-checkout (slate blue)
+		Color4:   "37",  // post-merge (teal)
+		Color5:   "136", // pre-push (amber)
+		Color6:   "241", // backfill (dark gray)
+		Color7:   "96",  // manual (plum)
 	},
 
 	// Mono dark - minimalist grayscale with cyan accent.
@@ -194,13 +194,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "247", // light gray for mono borders
 		UIActive: "50",  // cyan for active UI elements
 		UIDim:    "247", // light gray for inactive UI elements
-		Color1:   "50",  // POST-COMMIT (cyan)
-		Color2:   "251", // POST-REWRITE (light gray)
-		Color3:   "248", // POST-CHECKOUT (gray)
-		Color4:   "50",  // POST-MERGE (cyan)
-		Color5:   "229", // PRE-PUSH (pale yellow)
-		Color6:   "243", // BACKFILL (dim gray)
-		Color7:   "255", // MANUAL (white)
+		Color1:   "50",  // post-commit (cyan)
+		Color2:   "251", // post-rewrite (light gray)
+		Color3:   "248", // post-checkout (gray)
+		Color4:   "50",  // post-merge (cyan)
+		Color5:   "229", // pre-push (pale yellow)
+		Color6:   "243", // backfill (dim gray)
+		Color7:   "255", // manual (white)
 	},
 
 	// Mono light - minimalist grayscale with teal accent.
@@ -215,13 +215,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "249", // light gray for mono borders
 		UIActive: "30",  // dark teal for active UI elements
 		UIDim:    "249", // light gray for inactive UI elements
-		Color1:   "30",  // POST-COMMIT (teal)
-		Color2:   "241", // POST-REWRITE (dark gray)
-		Color3:   "244", // POST-CHECKOUT (gray)
-		Color4:   "30",  // POST-MERGE (teal)
-		Color5:   "136", // PRE-PUSH (amber)
-		Color6:   "247", // BACKFILL (light gray)
-		Color7:   "235", // MANUAL (near black)
+		Color1:   "30",  // post-commit (teal)
+		Color2:   "241", // post-rewrite (dark gray)
+		Color3:   "244", // post-checkout (gray)
+		Color4:   "30",  // post-merge (teal)
+		Color5:   "136", // pre-push (amber)
+		Color6:   "247", // backfill (light gray)
+		Color7:   "235", // manual (near black)
 	},
 
 	// Ocean dark - cool blues and teals, like deep water.
@@ -236,13 +236,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "68",  // steel blue for ocean borders
 		UIActive: "75",  // sky blue for active UI elements
 		UIDim:    "68",  // steel blue for inactive UI elements
-		Color1:   "43",  // POST-COMMIT (turquoise)
-		Color2:   "105", // POST-REWRITE (slate blue)
-		Color3:   "75",  // POST-CHECKOUT (sky blue)
-		Color4:   "80",  // POST-MERGE (medium turquoise)
-		Color5:   "221", // PRE-PUSH (gold)
-		Color6:   "67",  // BACKFILL (steel blue)
-		Color7:   "159", // MANUAL (light cyan)
+		Color1:   "43",  // post-commit (turquoise)
+		Color2:   "105", // post-rewrite (slate blue)
+		Color3:   "75",  // post-checkout (sky blue)
+		Color4:   "80",  // post-merge (medium turquoise)
+		Color5:   "221", // pre-push (gold)
+		Color6:   "67",  // backfill (steel blue)
+		Color7:   "159", // manual (light cyan)
 	},
 
 	// Ocean light - deep sea colors for light backgrounds.
@@ -257,13 +257,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "74",  // medium cyan for ocean borders
 		UIActive: "25",  // dark blue for active UI elements
 		UIDim:    "74",  // medium cyan for inactive UI elements
-		Color1:   "30",  // POST-COMMIT (dark cyan)
-		Color2:   "61",  // POST-REWRITE (slate blue)
-		Color3:   "25",  // POST-CHECKOUT (dark blue)
-		Color4:   "37",  // POST-MERGE (teal)
-		Color5:   "130", // PRE-PUSH (dark orange)
-		Color6:   "66",  // BACKFILL (grayish cyan)
-		Color7:   "17",  // MANUAL (navy)
+		Color1:   "30",  // post-commit (dark cyan)
+		Color2:   "61",  // post-rewrite (slate blue)
+		Color3:   "25",  // post-checkout (dark blue)
+		Color4:   "37",  // post-merge (teal)
+		Color5:   "130", // pre-push (dark orange)
+		Color6:   "66",  // backfill (grayish cyan)
+		Color7:   "17",  // manual (navy)
 	},
 
 	// Sunset dark - warm gradient from orange to magenta to purple.
@@ -278,13 +278,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "175", // light pink for sunset borders
 		UIActive: "213", // orchid for active UI elements
 		UIDim:    "175", // light pink for inactive UI elements
-		Color1:   "216", // POST-COMMIT (salmon)
-		Color2:   "213", // POST-REWRITE (orchid)
-		Color3:   "183", // POST-CHECKOUT (plum)
-		Color4:   "209", // POST-MERGE (coral)
-		Color5:   "221", // PRE-PUSH (gold)
-		Color6:   "139", // BACKFILL (dusty rose)
-		Color7:   "224", // MANUAL (misty rose)
+		Color1:   "216", // post-commit (salmon)
+		Color2:   "213", // post-rewrite (orchid)
+		Color3:   "183", // post-checkout (plum)
+		Color4:   "209", // post-merge (coral)
+		Color5:   "221", // pre-push (gold)
+		Color6:   "139", // backfill (dusty rose)
+		Color7:   "224", // manual (misty rose)
 	},
 
 	// Sunset light - deep warm tones for light backgrounds.
@@ -299,13 +299,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "132", // medium orchid for sunset borders
 		UIActive: "127", // medium violet for active UI elements
 		UIDim:    "132", // medium orchid for inactive UI elements
-		Color1:   "166", // POST-COMMIT (dark orange)
-		Color2:   "127", // POST-REWRITE (medium violet)
-		Color3:   "90",  // POST-CHECKOUT (dark magenta)
-		Color4:   "130", // POST-MERGE (dark coral)
-		Color5:   "136", // PRE-PUSH (dark gold)
-		Color6:   "95",  // BACKFILL (dusty purple)
-		Color7:   "52",  // MANUAL (dark red)
+		Color1:   "166", // post-commit (dark orange)
+		Color2:   "127", // post-rewrite (medium violet)
+		Color3:   "90",  // post-checkout (dark magenta)
+		Color4:   "130", // post-merge (dark coral)
+		Color5:   "136", // pre-push (dark gold)
+		Color6:   "95",  // backfill (dusty purple)
+		Color7:   "52",  // manual (dark red)
 	},
 
 	// Candy dark - sweet pastel colors on dark background.
@@ -320,13 +320,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "183", // light orchid for candy borders
 		UIActive: "153", // baby blue for active UI elements
 		UIDim:    "183", // light orchid for inactive UI elements
-		Color1:   "158", // POST-COMMIT (mint)
-		Color2:   "218", // POST-REWRITE (pink)
-		Color3:   "153", // POST-CHECKOUT (baby blue)
-		Color4:   "158", // POST-MERGE (aquamarine)
-		Color5:   "222", // PRE-PUSH (peach)
-		Color6:   "188", // BACKFILL (light lavender)
-		Color7:   "231", // MANUAL (white)
+		Color1:   "158", // post-commit (mint)
+		Color2:   "218", // post-rewrite (pink)
+		Color3:   "153", // post-checkout (baby blue)
+		Color4:   "158", // post-merge (aquamarine)
+		Color5:   "222", // pre-push (peach)
+		Color6:   "188", // backfill (light lavender)
+		Color7:   "231", // manual (white)
 	},
 
 	// Candy light - deeper candy colors for light backgrounds.
@@ -341,13 +341,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "139", // medium pink for candy borders
 		UIActive: "68",  // medium blue for active UI elements
 		UIDim:    "139", // medium pink for inactive UI elements
-		Color1:   "36",  // POST-COMMIT (dark mint)
-		Color2:   "132", // POST-REWRITE (medium orchid)
-		Color3:   "68",  // POST-CHECKOUT (medium blue)
-		Color4:   "73",  // POST-MERGE (cadet blue)
-		Color5:   "172", // PRE-PUSH (dark peach)
-		Color6:   "103", // BACKFILL (medium purple)
-		Color7:   "240", // MANUAL (dark gray)
+		Color1:   "36",  // post-commit (dark mint)
+		Color2:   "132", // post-rewrite (medium orchid)
+		Color3:   "68",  // post-checkout (medium blue)
+		Color4:   "73",  // post-merge (cadet blue)
+		Color5:   "172", // pre-push (dark peach)
+		Color6:   "103", // backfill (medium purple)
+		Color7:   "240", // manual (dark gray)
 	},
 
 	// Contrast dark - maximum readability with pure primaries.
@@ -362,13 +362,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "255", // white for high contrast borders
 		UIActive: "51",  // pure bright cyan for active UI elements
 		UIDim:    "255", // white for inactive UI elements
-		Color1:   "46",  // POST-COMMIT (green)
-		Color2:   "201", // POST-REWRITE (magenta)
-		Color3:   "21",  // POST-CHECKOUT (blue)
-		Color4:   "51",  // POST-MERGE (cyan)
-		Color5:   "226", // PRE-PUSH (yellow)
-		Color6:   "245", // BACKFILL (gray)
-		Color7:   "231", // MANUAL (white)
+		Color1:   "46",  // post-commit (green)
+		Color2:   "201", // post-rewrite (magenta)
+		Color3:   "21",  // post-checkout (blue)
+		Color4:   "51",  // post-merge (cyan)
+		Color5:   "226", // pre-push (yellow)
+		Color6:   "245", // backfill (gray)
+		Color7:   "231", // manual (white)
 	},
 
 	// Contrast light - maximum readability for light backgrounds.
@@ -383,13 +383,13 @@ var Themes = map[string]ColorConfig{
 		Border:   "238", // dark gray for high contrast borders
 		UIActive: "21",  // dark blue for active UI elements
 		UIDim:    "238", // dark gray for inactive UI elements
-		Color1:   "22",  // POST-COMMIT (dark green)
-		Color2:   "90",  // POST-REWRITE (dark magenta)
-		Color3:   "19",  // POST-CHECKOUT (dark blue)
-		Color4:   "30",  // POST-MERGE (dark cyan)
-		Color5:   "130", // PRE-PUSH (dark orange)
-		Color6:   "243", // BACKFILL (gray)
-		Color7:   "232", // MANUAL (near black)
+		Color1:   "22",  // post-commit (dark green)
+		Color2:   "90",  // post-rewrite (dark magenta)
+		Color3:   "19",  // post-checkout (dark blue)
+		Color4:   "30",  // post-merge (dark cyan)
+		Color5:   "130", // pre-push (dark orange)
+		Color6:   "243", // backfill (gray)
+		Color7:   "232", // manual (near black)
 	},
 }
 

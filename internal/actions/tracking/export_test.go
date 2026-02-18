@@ -31,7 +31,8 @@ const (
 	colFilesChanged = 12
 	colInsertions   = 13
 	colDeletions    = 14
-	colDevice       = 15
+	colSource       = 15
+	colDevice       = 16
 )
 
 func TestGetCSVPath_CurrentYear(t *testing.T) {
@@ -79,8 +80,8 @@ func TestLoadCSVRecords_ExistingFile(t *testing.T) {
 	path := filepath.Join(dir, "test.csv")
 
 	// Create CSV file with new schema header and data
-	content := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,device
-uuid1,commit,2024-01-15T10:30:00Z,github.com/user/repo,repo,auth1,John,john@example.com,main,abc123,parent1,Fix bug,3,10,5,machine1
+	content := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,source,device
+uuid1,commit,2024-01-15T10:30:00Z,github.com/user/repo,repo,auth1,John,john@example.com,main,abc123,parent1,Fix bug,3,10,5,post-commit,machine1
 `
 	err := os.WriteFile(path, []byte(content), 0600)
 	require.NoError(t, err)
@@ -117,8 +118,8 @@ func TestBuildRecord_CreatesCorrectFormat(t *testing.T) {
 
 	record := buildRecord(event, meta)
 
-	require.Len(t, record, 16)
-	require.NotEmpty(t, record[colEventID])                        // UUID generated
+	require.Len(t, record, 17)
+	require.NotEmpty(t, record[colEventID])                        // deterministic event ID
 	require.Equal(t, "commit", record[colEventType])               // event_type
 	require.Equal(t, "2024-01-15T10:30:00Z", record[colTimestamp]) // timestamp
 	require.Equal(t, "github.com/user/repo", record[colRepoID])    // repo_id
@@ -126,6 +127,11 @@ func TestBuildRecord_CreatesCorrectFormat(t *testing.T) {
 	require.Equal(t, "main", record[colBranch])                    // branch
 	require.Equal(t, "abc123def456", record[colCommitHash])        // commit_hash
 	require.Equal(t, "Fix bug", record[colMessage])                // message
+	require.Equal(t, "post-commit", record[colSource])             // source
+
+	// Verify event_id is deterministic: same inputs produce same output
+	record2 := buildRecord(event, meta)
+	require.Equal(t, record[colEventID], record2[colEventID])
 }
 
 func TestBuildRecord_SanitizesNewlines(t *testing.T) {
@@ -147,9 +153,9 @@ func TestWriteCSVSorted_CreatesFileWithHeader(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.csv")
 
-	// New schema: event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,device
+	// New schema: event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,source,device
 	records := map[string][]string{
-		"repo1:commit1": {"uuid1", "commit", "2024-01-15T10:30:00Z", "repo1", "repo1", "auth1", "", "", "main", "commit1", "", "msg", "0", "0", "0", "device1"},
+		"repo1:commit1": {"uuid1", "commit", "2024-01-15T10:30:00Z", "repo1", "repo1", "auth1", "", "", "main", "commit1", "", "msg", "0", "0", "0", "post-commit", "device1"},
 	}
 
 	err := writeCSVSorted(path, records)
@@ -174,9 +180,9 @@ func TestWriteCSVSorted_SortsByTimestamp(t *testing.T) {
 
 	// New schema: timestamp is at index 2, commit_hash at index 9
 	records := map[string][]string{
-		"repo:commit3": {"uuid3", "commit", "2024-01-20T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit3", "", "third", "0", "0", "0", "device"},
-		"repo:commit1": {"uuid1", "commit", "2024-01-10T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit1", "", "first", "0", "0", "0", "device"},
-		"repo:commit2": {"uuid2", "commit", "2024-01-15T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit2", "", "second", "0", "0", "0", "device"},
+		"repo:commit3": {"uuid3", "commit", "2024-01-20T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit3", "", "third", "0", "0", "0", "post-commit", "device"},
+		"repo:commit1": {"uuid1", "commit", "2024-01-10T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit1", "", "first", "0", "0", "0", "post-commit", "device"},
+		"repo:commit2": {"uuid2", "commit", "2024-01-15T10:00:00Z", "repo", "repo", "auth", "", "", "main", "commit2", "", "second", "0", "0", "0", "post-commit", "device"},
 	}
 
 	err := writeCSVSorted(path, records)
@@ -606,14 +612,14 @@ func TestParseCSVIntoMap_LastWriteWins(t *testing.T) {
 	records := make(map[string][]string)
 
 	// First version (using new semantic API schema)
-	content1 := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,device
-uuid1,commit,2024-01-15T10:30:00Z,myrepo,myrepo,author1,,,main,abc123,,First version,0,0,0,machine1
+	content1 := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,source,device
+uuid1,commit,2024-01-15T10:30:00Z,myrepo,myrepo,author1,,,main,abc123,,First version,0,0,0,post-commit,machine1
 `
 	parseCSVIntoMap(content1, records)
 
 	// Second version (same key, different data)
-	content2 := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,device
-uuid2,commit,2024-01-15T10:30:00Z,myrepo,myrepo,author1,,,feature,abc123,,Second version,0,0,0,machine2
+	content2 := `event_id,event_type,timestamp,repo_id,repo_name,author_id,author_name,author_email,branch,commit_hash,parent_hashes,message,files_changed,insertions,deletions,source,device
+uuid2,commit,2024-01-15T10:30:00Z,myrepo,myrepo,author1,,,feature,abc123,,Second version,0,0,0,post-commit,machine2
 `
 	parseCSVIntoMap(content2, records)
 
@@ -764,6 +770,23 @@ func TestGetHostname(t *testing.T) {
 	require.NotNil(t, hostname)
 }
 
+func TestGenerateEventID_Deterministic(t *testing.T) {
+	// Same inputs produce same output
+	id1 := generateEventID("github.com/user/repo", "abc123")
+	id2 := generateEventID("github.com/user/repo", "abc123")
+	require.Equal(t, id1, id2, "same inputs should produce same event_id")
+
+	// Different inputs produce different output
+	id3 := generateEventID("github.com/user/repo", "def456")
+	require.NotEqual(t, id1, id3, "different inputs should produce different event_id")
+
+	id4 := generateEventID("github.com/other/repo", "abc123")
+	require.NotEqual(t, id1, id4, "different repo should produce different event_id")
+
+	// Length is 16 hex chars
+	require.Len(t, id1, 16, "event_id should be 16 hex characters")
+}
+
 func TestCommitExportChanges_WithFiles(t *testing.T) {
 	dir := t.TempDir()
 	exportDir := filepath.Join(dir, "export")
@@ -858,7 +881,7 @@ func TestWriteCSVSorted_InvalidPath(t *testing.T) {
 	// Try to write to an invalid path
 	path := "/nonexistent/directory/test.csv"
 	records := map[string][]string{
-		"repo:commit": {"uuid", "commit", "2024-01-15T10:30:00Z", "repo", "repo", "auth", "", "", "main", "commit", "", "msg", "0", "0", "0", "device"},
+		"repo:commit": {"uuid", "commit", "2024-01-15T10:30:00Z", "repo", "repo", "auth", "", "", "main", "commit", "", "msg", "0", "0", "0", "post-commit", "device"},
 	}
 
 	err := writeCSVSorted(path, records)

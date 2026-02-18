@@ -583,13 +583,13 @@ func (m *activityModel) buildStatsPanel(layout *splitpanel.Layout, height int) s
 		name   string
 		color  string
 	}{
-		{"1", store.SourcePostCommit, "POST-COMMIT", colors.Color1},
-		{"2", store.SourcePostRewrite, "POST-REWRITE", colors.Color2},
-		{"3", store.SourcePostCheckout, "POST-CHECKOUT", colors.Color3},
-		{"4", store.SourcePostMerge, "POST-MERGE", colors.Color4},
-		{"5", store.SourcePrePush, "PRE-PUSH", colors.Color5},
-		{"6", store.SourceManual, "MANUAL", colors.Color7},
-		{"7", store.SourceBackfill, "BACKFILL", colors.Color6},
+		{"1", store.SourcePostCommit, "post-commit", colors.Color1},
+		{"2", store.SourcePostRewrite, "post-rewrite", colors.Color2},
+		{"3", store.SourcePostCheckout, "post-checkout", colors.Color3},
+		{"4", store.SourcePostMerge, "post-merge", colors.Color4},
+		{"5", store.SourcePrePush, "pre-push", colors.Color5},
+		{"6", store.SourceManual, "manual", colors.Color7},
+		{"7", store.SourceBackfill, "backfill", colors.Color6},
 	}
 
 	for _, sf := range sourceFilters {

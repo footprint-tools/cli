@@ -12,12 +12,31 @@ const (
 	dirPermPrivate os.FileMode = 0700
 )
 
+// DefaultHome is set via ldflags for dev builds.
+// When non-empty, it acts as the default FP_HOME.
+var DefaultHome string
+
+// HomeOverride returns the FP_HOME override path if set via
+// environment variable or build-time default. Returns "" when
+// the application should use standard platform paths.
+func HomeOverride() string {
+	if h := os.Getenv("FP_HOME"); h != "" {
+		return h
+	}
+	return DefaultHome
+}
+
 // AppDataDir returns the application data directory for config/database.
 // Uses os.UserConfigDir() which returns:
 //   - macOS: ~/Library/Application Support
 //   - Linux: $XDG_CONFIG_HOME or ~/.config
 //   - Windows: %AppData% (roaming)
 func AppDataDir() string {
+	if h := HomeOverride(); h != "" {
+		_ = os.MkdirAll(h, dirPermPrivate)
+		return h
+	}
+
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "."
@@ -37,6 +56,11 @@ func AppDataDir() string {
 //   - Linux: $XDG_DATA_HOME/footprint or ~/.local/share/footprint
 //   - Windows: %LOCALAPPDATA%\footprint
 func AppLocalDataDir() string {
+	if h := HomeOverride(); h != "" {
+		_ = os.MkdirAll(h, dirPermPrivate)
+		return h
+	}
+
 	var base string
 
 	switch runtime.GOOS {
@@ -84,6 +108,11 @@ func ExportRepoDir() string {
 }
 
 func ConfigFilePath() (string, error) {
+	if h := HomeOverride(); h != "" {
+		_ = os.MkdirAll(h, dirPermPrivate)
+		return filepath.Join(h, ".fprc"), nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

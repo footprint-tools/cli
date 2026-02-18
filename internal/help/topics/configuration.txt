@@ -79,13 +79,13 @@ INTERFACE COLORS (Interactive elements)
 
 EVENT TYPE COLORS (Activity display)
 
-    color_1            POST-COMMIT events                    (default: green)
-    color_2            POST-REWRITE events (rebase, amend)   (default: magenta)
-    color_3            POST-CHECKOUT events                  (default: blue)
-    color_4            POST-MERGE events                     (default: cyan)
-    color_5            PRE-PUSH events                       (default: yellow)
-    color_6            BACKFILL events (imported history)    (default: gray)
-    color_7            MANUAL events (fp record)             (default: white)
+    color_1            post-commit events                    (default: green)
+    color_2            post-rewrite events (rebase, amend)   (default: magenta)
+    color_3            post-checkout events                  (default: blue)
+    color_4            post-merge events                     (default: cyan)
+    color_5            pre-push events                       (default: yellow)
+    color_6            backfill events (imported history)    (default: gray)
+    color_7            manual events (fp record)             (default: white)
 
 EXAMPLES
 

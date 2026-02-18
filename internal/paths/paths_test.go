@@ -152,6 +152,79 @@ func TestAppLocalDataDir_WithXDGDataHome(t *testing.T) {
 		"AppLocalDataDir should end with 'footprint': %s", dir)
 }
 
+func TestAppDataDir_WithFPHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	dir := AppDataDir()
+	require.Equal(t, tmp, dir)
+}
+
+func TestAppLocalDataDir_WithFPHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	dir := AppLocalDataDir()
+	require.Equal(t, tmp, dir)
+}
+
+func TestConfigFilePath_WithFPHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	path, err := ConfigFilePath()
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(tmp, ".fprc"), path)
+}
+
+func TestLogFilePath_WithFPHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	path := LogFilePath()
+	require.Equal(t, filepath.Join(tmp, "fp.log"), path)
+}
+
+func TestExportRepoDir_WithFPHome(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	dir := ExportRepoDir()
+	require.Equal(t, filepath.Join(tmp, "export"), dir)
+}
+
+func TestHomeOverride_EnvTakesPrecedence(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("FP_HOME", tmp)
+
+	// Even if DefaultHome is set, env var wins
+	oldDefault := DefaultHome
+	DefaultHome = "/some/other/path"
+	t.Cleanup(func() { DefaultHome = oldDefault })
+
+	require.Equal(t, tmp, HomeOverride())
+}
+
+func TestHomeOverride_FallsBackToDefaultHome(t *testing.T) {
+	t.Setenv("FP_HOME", "")
+
+	oldDefault := DefaultHome
+	DefaultHome = "/my/dev/home"
+	t.Cleanup(func() { DefaultHome = oldDefault })
+
+	require.Equal(t, "/my/dev/home", HomeOverride())
+}
+
+func TestHomeOverride_EmptyWhenNoOverride(t *testing.T) {
+	t.Setenv("FP_HOME", "")
+
+	oldDefault := DefaultHome
+	DefaultHome = ""
+	t.Cleanup(func() { DefaultHome = oldDefault })
+
+	require.Empty(t, HomeOverride())
+}
+
 func TestAppLocalDataDir_WithoutXDGDataHome(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Test only runs on Linux")

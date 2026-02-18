@@ -49,13 +49,13 @@ func renderColorPreview(cfg style.ColorConfig) string {
 		colorize("info ", cfg.Info) +
 		colorize("muted", cfg.Muted) +
 		"   " +
-		colorize("POST-COMMIT ", cfg.Color1) +
-		colorize("POST-REWRITE ", cfg.Color2) +
-		colorize("POST-CHECKOUT ", cfg.Color3) +
-		colorize("POST-MERGE ", cfg.Color4) +
-		colorize("PRE-PUSH ", cfg.Color5) +
-		colorize("BACKFILL ", cfg.Color6) +
-		colorize("MANUAL", cfg.Color7) +
+		colorize("post-commit ", cfg.Color1) +
+		colorize("post-rewrite ", cfg.Color2) +
+		colorize("post-checkout ", cfg.Color3) +
+		colorize("post-merge ", cfg.Color4) +
+		colorize("pre-push ", cfg.Color5) +
+		colorize("backfill ", cfg.Color6) +
+		colorize("manual", cfg.Color7) +
 		"   " +
 		colorize("UI-active ", cfg.UIActive) +
 		colorize("UI-dim", cfg.UIDim)

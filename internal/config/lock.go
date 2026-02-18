@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/footprint-tools/cli/internal/log"
+	"github.com/footprint-tools/cli/internal/paths"
 )
 
 const (
@@ -45,6 +46,9 @@ func WithLock(fn func() error) error {
 
 // getLockPath returns the path to the lock file.
 func getLockPath() (string, error) {
+	if h := paths.HomeOverride(); h != "" {
+		return filepath.Join(h, lockFileName), nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

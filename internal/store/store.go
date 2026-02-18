@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,8 +23,16 @@ type Store struct {
 }
 
 // New creates a new Store with the given database path.
-// Runs migrations automatically.
+// Runs migrations automatically. Creates the parent directory if needed.
 func New(path string) (*Store, error) {
+	// Ensure parent directory exists (SQLite won't create it)
+	if path != ":memory:" {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return nil, fmt.Errorf("create database directory: %w", err)
+		}
+	}
+
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)

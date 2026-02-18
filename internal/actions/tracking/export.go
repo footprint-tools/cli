@@ -21,7 +21,6 @@ import (
 	"github.com/footprint-tools/cli/internal/log"
 	"github.com/footprint-tools/cli/internal/output"
 	"github.com/footprint-tools/cli/internal/store"
-	"github.com/google/uuid"
 )
 
 const (
@@ -51,6 +50,7 @@ var csvHeader = []string{
 	"files_changed",
 	"insertions",
 	"deletions",
+	"source",
 	"device",
 }
 
@@ -477,7 +477,7 @@ func buildRecord(e store.RepoEvent, meta git.CommitMetadata) []string {
 	parentHashes := strings.ReplaceAll(meta.ParentCommits, " ", ",")
 
 	return []string{
-		generateEventID(),
+		generateEventID(e.RepoID, e.Commit),
 		eventType,
 		timestamp,
 		e.RepoID,
@@ -492,13 +492,16 @@ func buildRecord(e store.RepoEvent, meta git.CommitMetadata) []string {
 		strconv.Itoa(meta.FilesChanged),
 		strconv.Itoa(meta.Insertions),
 		strconv.Itoa(meta.Deletions),
+		e.Source.String(),
 		getHostname(),
 	}
 }
 
-// generateEventID creates a unique UUID for each event.
-func generateEventID() string {
-	return uuid.New().String()
+// generateEventID creates a deterministic event ID from repo and commit.
+// Returns the first 16 hex characters of SHA256(repoID + ":" + commitHash).
+func generateEventID(repoID, commitHash string) string {
+	hash := sha256.Sum256([]byte(repoID + ":" + commitHash))
+	return hex.EncodeToString(hash[:8]) // 16 hex chars
 }
 
 // generateAuthorID creates a stable hash from author email.
